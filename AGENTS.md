@@ -23,6 +23,7 @@ FastBunkai is a Rust + Python hybrid implementation of the bunkai sentence bound
 ## Testing & Validation
 - **Pytest Suite** (`tests/test_compatibility.py`)
   - Compares sentence splits, end-of-sentence indices, and morphological token surfaces against bunkai for multiple Japanese and English texts.
+  - Edge cases（空文字・空白・多絵文字など）を含めた互換性検証と、スレッド／asyncio 並列実行の整合性テストを実施。
   - Run via `uv run pytest`.
 
 - **Rust Unit Tests**

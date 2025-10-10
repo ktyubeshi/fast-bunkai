@@ -49,9 +49,8 @@ class FastBunkaiSentenceBoundaryDisambiguation:
             annotations.add_annotation_layer(layer["name"], spans)
             if layer["name"] == "BasicRule":
                 morph_spans = self._build_morph_layer(text)
-                if morph_spans:
-                    combined: List[SpanAnnotation] = morph_spans + list(annotations.flatten())
-                    annotations.add_annotation_layer("MorphAnnotatorJanome", combined)
+                combined: List[SpanAnnotation] = morph_spans + list(annotations.flatten())
+                annotations.add_annotation_layer("MorphAnnotatorJanome", combined)
 
         return annotations
 
