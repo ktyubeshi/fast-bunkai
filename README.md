@@ -32,13 +32,44 @@ for sentence in splitter(text):
 
 ### CLI Usage
 
+`fast-bunkai` provides the same pipe-friendly command-line interface as bunkai.
+
 ```bash
-echo -e '宿を予約しました♪!まだ2ヶ月も先だけど。早すぎかな(笑)楽しみです★\n2文書目です。' \
+echo -e '宿を予約しました♪!▁まだ2ヶ月も先だけど。▁早すぎかな(笑)楽しみです★\n2文書目です。▁改行を含みます。' \
   | uvx fast-bunkai
 ```
 
-- `fast-bunkai --ma` outputs morphological annotations like the original bunkai.
-- Placeholder `▁` represents line breaks and output sentence boundaries are marked with `│`.
+Output (sentence boundaries marked with `│`, newlines preserved via `▁`):
+
+```
+宿を予約しました♪!▁│まだ2ヶ月も先だけど。▁│早すぎかな(笑)│楽しみです★
+2文書目です。▁│改行を含みます。
+```
+
+Morphological output is also available:
+
+```bash
+echo -e '形態素解析し▁ます。結果を 表示します！' | uvx fast-bunkai --ma
+```
+
+```
+形態素	名詞,一般,*,*,*,*,形態素,ケイタイソ,ケイタイソ
+解析	名詞,サ変接続,*,*,*,*,解析,カイセキ,カイセキ
+し	動詞,自立,*,*,サ変・スル,連用形,する,シ,シ
+▁
+EOS
+ます	助動詞,*,*,*,特殊・マス,基本形,ます,マス,マス
+。	記号,句点,*,*,*,*,。,。,。
+EOS
+結果	名詞,副詞可能,*,*,*,*,結果,ケッカ,ケッカ
+を	助詞,格助詞,一般,*,*,*,を,ヲ,ヲ
+	記号,空白,*,*,*,*, ,*,*
+表示	名詞,サ変接続,*,*,*,*,表示,ヒョウジ,ヒョージ
+し	動詞,自立,*,*,サ変・スル,連用形,する,シ,シ
+ます	助動詞,*,*,*,特殊・マス,基本形,ます,マス,マス
+！	記号,一般,*,*,*,*,！,！,！
+EOS
+```
 
 ### Benchmarks
 
