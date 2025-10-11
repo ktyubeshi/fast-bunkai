@@ -10,9 +10,9 @@ jobs:
     name: lint-test-benchmark
     runs-on: ubuntu-latest
     env:
-      UV_CACHE_DIR: ${{ runner.temp }}/uv-cache
-      CARGO_HOME: ${{ runner.temp }}/cargo
-      RUSTUP_HOME: ${{ runner.temp }}/rustup
+      UV_CACHE_DIR: ${{ github.workspace }}/.cache/uv
+      CARGO_HOME: ${{ github.workspace }}/.cache/cargo
+      RUSTUP_HOME: ${{ github.workspace }}/.cache/rustup
 
     steps:
       - name: Checkout
