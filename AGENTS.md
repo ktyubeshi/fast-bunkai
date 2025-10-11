@@ -3,6 +3,8 @@
 ## Overview
 FastBunkai is a Rust + Python hybrid implementation of the bunkai sentence boundary disambiguation pipeline. The project mirrors the public API of `bunkai.Bunkai`, enabling drop-in replacement via `from fast_bunkai import FastBunkai as Bunkai`. The Rust backend handles the heavy segmentation logic while Python maintains compatibility layers (annotations, Janome integration) for parity with the original library.
 
+See `README.md` for quick start instructions, CLI usage, benchmarks (≈24x faster than pure Python bunkai on bundled corpora), and acknowledgements to the [megagonlabs/bunkai](https://github.com/megagonlabs/bunkai) project.
+
 ## Architecture
 - **Rust core (`src/lib.rs`)**
   - Implements key annotators: face mark detection, emotion expressions, emoji detection, basic punctuation rules, dot/number exceptions, linebreak handling, and indirect quote filtering.
