@@ -815,12 +815,8 @@ mod tests {
     fn indirect_quote_handles_question_particle_followed_by_to() {
         let text = "スタッフ? と話し込み。";
         let view = TextView::new(text);
-        let spans = build_spans_from_regex(
-            &view,
-            "BasicRule",
-            Some("BasicRule"),
-            &BASIC_RULE_REGEX,
-        );
+        let spans =
+            build_spans_from_regex(&view, "BasicRule", Some("BasicRule"), &BASIC_RULE_REGEX);
         let target = spans
             .iter()
             .find(|span| span.start == 4 && span.end == 6)
