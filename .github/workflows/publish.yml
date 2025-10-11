@@ -35,14 +35,14 @@ jobs:
           command: build
           target: ${{ matrix.target }}
           manylinux: ${{ matrix.manylinux }}
-          args: --release
+          args: --release --out wheelhouse
           sdist: ${{ matrix.sdist == 'true' }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.name }}-dist
-          path: dist
+          path: wheelhouse
           if-no-files-found: error
 
   build-macos:
@@ -87,19 +87,27 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: linux-x86_64-dist
-          path: dist
+          path: wheelhouse/linux-x86_64
 
       - name: Download Linux aarch64 wheels
         uses: actions/download-artifact@v4
         with:
           name: linux-aarch64-dist
-          path: dist
+          path: wheelhouse/linux-aarch64
 
       - name: Download macOS wheels
         uses: actions/download-artifact@v4
         with:
           name: macos-universal2-dist
-          path: dist
+          path: wheelhouse/macos
+
+      - name: Collate wheels
+        run: |
+          mkdir -p dist
+          find wheelhouse -name "*.whl" -exec cp {} dist/ \;
+          if compgen -G "wheelhouse/linux-x86_64/*.tar.gz" > /dev/null; then
+            cp wheelhouse/linux-x86_64/*.tar.gz dist/
+          fi
 
       - name: Smoke test manylinux wheel
         run: |
