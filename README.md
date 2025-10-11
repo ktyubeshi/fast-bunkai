@@ -1,11 +1,13 @@
 # fast-bunkai
 
-Rust + Python hybrid rewrite of [megagonlabs/bunkai](https://github.com/megagonlabs/bunkai) that keeps the public API compatible while delivering significant speedups.
+fast-bunkai is a Python library for sentence boundary detection that mirrors the API of [megagonlabs/bunkai](https://github.com/megagonlabs/bunkai). You can drop it into existing bunkai-based projects and obtain the same results, while a Rust-powered core delivers much faster execution.
+
+fast-bunkai は、日本語・英語の長い文章を自然な文単位に切り出すための Python ライブラリです。純粋 Python 実装である [megagonlabs/bunkai](https://github.com/megagonlabs/bunkai) と互換 API を提供しつつ、内部を Rust で最適化することで大幅な高速化を実現しています。
 
 ## Overview
 
 - **Drop-in replacement**: exposes the same `FastBunkai` interface as the original `bunkai.Bunkai`. Compatibility tests cover Japanese / English examples, emoji-heavy texts, and custom corpora, matching pure Python bunkai outputs 100% for documented cases.
-- **Rust-powered core**: segmentation pipeline (facemark, emoji, dot exceptions, indirect quote rules, etc.) is implemented in Rust via PyO3, releasing the GIL during heavy work while Python layers maintain Janome annotations for parity.
+- **Rust-powered engine**: the segmentation pipeline (facemark, emoji, dot exceptions, indirect quote rules, etc.) runs in Rust via PyO3, releasing the GIL for heavy work while Python code preserves Janome-based annotations.
 - **Speed**: GitHub Actions benchmarks (same command as below) observed ~40–300× faster segmentation depending on corpus size (see Benchmarks section).
 - **CLI compatible**: bundled `fast-bunkai` command mirrors bunkai’s CLI (including `--ma` morphological mode and placeholder handling) and can be invoked quickly via `uvx`.
 
