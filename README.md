@@ -4,9 +4,9 @@
 [![Publish](https://github.com/hotchpotch/fast-bunkai/actions/workflows/publish.yml/badge.svg)](https://github.com/hotchpotch/fast-bunkai/actions/workflows/publish.yml)
 [![PyPI](https://img.shields.io/pypi/v/fast-bunkai.svg)](https://pypi.org/project/fast-bunkai/)
 
-⚡ FastBunkai is a Rust-accelerated, drop-in compatible reimplementation of [megagonlabs/bunkai](https://github.com/megagonlabs/bunkai) for lightning-fast sentence boundary detection.
+⚡ FastBunkai is a Python library that splits long Japanese and English texts into natural sentences, mirroring the [megagonlabs/bunkai](https://github.com/megagonlabs/bunkai) API while its Rust core unlocks drastic speedups.
 
-⚡ fast-bunkai は [megagonlabs/bunkai](https://github.com/megagonlabs/bunkai) と互換 API を持ち、Rust による最適化で桁違いの高速性を実現した文分割ライブラリです。
+⚡ fast-bunkai は、日本語・英語の長い文章を自然な文単位に切り出すための Python ライブラリです。純粋 Python 実装である [megagonlabs/bunkai](https://github.com/megagonlabs/bunkai) と互換 API を提供しつつ、内部を Rust で最適化することで大幅な高速化を実現しています。
 
 ---
 
@@ -45,9 +45,18 @@ uv pip install fast-bunkai
 from fast_bunkai import FastBunkai
 
 splitter = FastBunkai()
-text = "宿を予約しました♪!まだ2ヶ月も先だけど。早すぎかな(笑)楽しみです★"
+text = "羽田から✈️出発して、友だちと🍣食べました。最高！また行きたいな😂 でも、予算は大丈夫かな…?"
 for sentence in splitter(text):
     print(sentence)
+```
+
+Output:
+
+```
+羽田から✈️出発して、友だちと🍣食べました。
+最高！
+また行きたいな😂
+でも、予算は大丈夫かな…?
 ```
 
 ## 🧰 CLI Examples
