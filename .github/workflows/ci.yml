@@ -9,16 +9,38 @@ jobs:
   build-and-test:
     name: lint-test-benchmark
     runs-on: ubuntu-latest
+    env:
+      UV_CACHE_DIR: ${{ runner.temp }}/uv-cache
+      CARGO_HOME: ${{ runner.temp }}/cargo
+      RUSTUP_HOME: ${{ runner.temp }}/rustup
 
     steps:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Restore uv cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.UV_CACHE_DIR }}
+          key: uv-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            uv-${{ runner.os }}-
+
+      - name: Restore cargo cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.CARGO_HOME }}/registry
+            ${{ env.CARGO_HOME }}/git
+            target
+          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-
+
       - name: Install uv
         uses: astral-sh/setup-uv@v6
         with:
           version: "0.9.2"
-          enable-cache: true
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -38,3 +60,7 @@ jobs:
 
       - name: Run benchmarks
         run: uv run python scripts/benchmark.py
+
+      - name: Prune uv cache
+        if: always()
+        run: uv cache prune --ci
