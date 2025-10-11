@@ -12,6 +12,9 @@ dependencies = [
     "janome>=0.5.0",
 ]
 
+[project.scripts]
+fast-bunkai = "fast_bunkai.cli:main"
+
 [tool.maturin]
 module-name = "fast_bunkai._fast_bunkai"
 bindings = "pyo3"
