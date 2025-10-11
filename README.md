@@ -52,19 +52,21 @@ for sentence in splitter(text):
 
 ## 🧰 CLI Examples
 
-Pipe-friendly segmentation (sentence boundaries marked with `│`, newlines visualised via `▁`):
+`fast-bunkai` provides the same pipe-friendly command-line interface as bunkai.
 
 ```bash
 echo -e '宿を予約しました♪!▁まだ2ヶ月も先だけど。▁早すぎかな(笑)楽しみです★\n2文書目です。▁改行を含みます。' \
   | uvx fast-bunkai
 ```
 
+Output (sentence boundaries marked with `│`, newlines preserved via `▁`):
+
 ```
 宿を予約しました♪!▁│まだ2ヶ月も先だけど。▁│早すぎかな(笑)│楽しみです★
 2文書目です。▁│改行を含みます。
 ```
 
-Morphological mode reproduces bunkai’s `--ma` output:
+Morphological output is also available:
 
 ```bash
 echo -e '形態素解析し▁ます。結果を 表示します！' | uvx fast-bunkai --ma
@@ -105,7 +107,9 @@ Latest GitHub Actions run (2025-10-11) reported:
 | English    | 200  | 212.21 ms     | 4.92 ms            | 43.15×  |
 | Long text* | 20   | 1323.61 ms    | 4.75 ms            | 278.49× |
 
-*Long text corpus mixes Japanese/English paragraphs with emojis and dot/number edge cases. Actual numbers vary by hardware, but the Rust core consistently outperforms pure Python bunkai by an order of magnitude or more.
+*Long text corpus contains mixed Japanese/English paragraphs with emojis and special cases.
+
+Actual numbers vary by hardware, but the Rust core consistently outperforms pure Python bunkai by an order of magnitude or more.
 
 ## 🧠 Architecture Snapshot
 
