@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import threading
+import warnings
 from typing import TYPE_CHECKING, Any, Iterator, List, Sequence, cast
 
 if TYPE_CHECKING:
@@ -16,8 +18,11 @@ def _char_len(text: str) -> int:
 
 
 class FastBunkaiSentenceBoundaryDisambiguation:
+    _LARGE_TEXT_THRESHOLD_BYTES = 10 * 1024 * 1024
+
     def __init__(self) -> None:
         self._tokenizer_factory = Tokenizer
+        self._tokenizer_local = threading.local()
 
     def __call__(self, text: str) -> Iterator[str]:
         result = self._segment(text)
@@ -58,10 +63,11 @@ class FastBunkaiSentenceBoundaryDisambiguation:
         return annotations
 
     def _segment(self, text: str) -> "SegmentResult":
+        self._warn_large_text(text)
         return _fast_bunkai.segment(text)
 
     def _build_morph_layer(self, text: str) -> List[SpanAnnotation]:
-        tokenizer = self._tokenizer_factory()
+        tokenizer = self._get_tokenizer()
         spans: List[SpanAnnotation] = []
         start_index = 0
         tokens: Sequence[Any] = cast(Sequence[Any], tokenizer.tokenize(text))
@@ -103,6 +109,30 @@ class FastBunkaiSentenceBoundaryDisambiguation:
                 )
             )
         return spans
+
+    def _warn_large_text(self, text: str) -> None:
+        if len(text) * 4 < self._LARGE_TEXT_THRESHOLD_BYTES:
+            return
+        text_bytes = len(text.encode("utf-8"))
+        if text_bytes < self._LARGE_TEXT_THRESHOLD_BYTES:
+            return
+        size_mib = text_bytes / (1024 * 1024)
+        warnings.warn(
+            (
+                "fast-bunkai received approximately "
+                f"{size_mib:.2f} MiB of text; segmentation may consume large memory "
+                "due to intermediate annotations."
+            ),
+            ResourceWarning,
+            stacklevel=4,
+        )
+
+    def _get_tokenizer(self) -> Tokenizer:
+        tokenizer = getattr(self._tokenizer_local, "instance", None)
+        if tokenizer is None:
+            tokenizer = self._tokenizer_factory()
+            self._tokenizer_local.instance = tokenizer
+        return tokenizer
 
 
 FastBunkai = FastBunkaiSentenceBoundaryDisambiguation
