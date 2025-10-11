@@ -1,0 +1,13 @@
+[package]
+name = "fast_bunkai_native"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "fast_bunkai_native"
+crate-type = ["cdylib"]
+
+[dependencies]
+once_cell = "1.19"
+pyo3 = { version = "0.22", features = ["extension-module", "abi3-py311"] }
+regex = "1.11"
