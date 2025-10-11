@@ -50,4 +50,12 @@ pythonVersion = "3.11"
 typeCheckingMode = "standard"
 reportUnusedImport = true
 reportUnusedVariable = true
-exclude = ["tmp", ".venv", ".tox", "target", "node_modules", "**/__pycache__"]
+exclude = [
+    "tmp",
+    ".venv",
+    ".tox",
+    "target",
+    "node_modules",
+    "**/__pycache__",
+    ".cache",
+]
