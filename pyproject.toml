@@ -12,6 +12,9 @@ dependencies = [
     "janome>=0.5.0",
 ]
 
+[project.scripts]
+fast-bunkai = "fast_bunkai.cli:main"
+
 [tool.maturin]
 module-name = "fast_bunkai._fast_bunkai"
 bindings = "pyo3"
@@ -47,4 +50,12 @@ pythonVersion = "3.11"
 typeCheckingMode = "standard"
 reportUnusedImport = true
 reportUnusedVariable = true
-exclude = ["tmp", ".venv", ".tox", "target", "node_modules", "**/__pycache__"]
+exclude = [
+    "tmp",
+    ".venv",
+    ".tox",
+    "target",
+    "node_modules",
+    "**/__pycache__",
+    ".cache",
+]
