@@ -45,7 +45,7 @@ uv pip install fast-bunkai
 from fast_bunkai import FastBunkai
 
 splitter = FastBunkai()
-text = "羽田から✈️出発して、友だちと🍣食べました。最高！また行きたいな😂 でも、予算は大丈夫かな…?"
+text = "羽田から✈️出発して、友だちと🍣食べました。最高！また行きたいな😂でも、予算は大丈夫かな…?"
 for sentence in splitter(text):
     print(sentence)
 ```
