@@ -4,9 +4,9 @@
 [![Publish](https://github.com/hotchpotch/fast-bunkai/actions/workflows/publish.yml/badge.svg)](https://github.com/hotchpotch/fast-bunkai/actions/workflows/publish.yml)
 [![PyPI](https://img.shields.io/pypi/v/fast-bunkai.svg)](https://pypi.org/project/fast-bunkai/)
 
-⚡ FastBunkai is a Python library that splits long Japanese and English texts into natural sentences, mirroring the [megagonlabs/bunkai](https://github.com/megagonlabs/bunkai) API while its Rust core unlocks drastic speedups.
+⚡ FastBunkai is a Python library that splits long Japanese and English texts into natural sentences, providing a highly compatible API with [megagonlabs/bunkai](https://github.com/megagonlabs/bunkai) while its Rust core unlocks drastic speedups.
 
-⚡ fast-bunkai は、日本語・英語の長い文章を自然な文単位に切り出すための Python ライブラリです。純粋 Python 実装である [megagonlabs/bunkai](https://github.com/megagonlabs/bunkai) と互換 API を提供しつつ、内部を Rust で最適化することで大幅な高速化を実現しています。
+⚡ fast-bunkai は、日本語・英語の長い文章を自然な文単位に切り出すための Python ライブラリです。純粋 Python 実装である [megagonlabs/bunkai](https://github.com/megagonlabs/bunkai) と高い互換性がある API を提供しつつ、内部を Rust で最適化することで大幅な高速化を実現しています。
 
 ---
 
