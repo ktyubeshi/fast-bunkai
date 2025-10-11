@@ -72,19 +72,19 @@ def main() -> None:
     parser.add_argument(
         "--repeats",
         type=int,
-        default=5,
-        help="Number of benchmark repetitions (default: 5).",
+        default=3,
+        help="Number of benchmark repetitions (default: 3).",
     )
     parser.add_argument(
-        "--jp-loops", type=int, default=200, help="繰り返して使う日本語テキストのループ回数。"
+        "--jp-loops", type=int, default=100, help="繰り返して使う日本語テキストのループ回数。"
     )
     parser.add_argument(
-        "--en-loops", type=int, default=200, help="繰り返して使う英語テキストのループ回数。"
+        "--en-loops", type=int, default=100, help="繰り返して使う英語テキストのループ回数。"
     )
     parser.add_argument(
         "--custom-loops",
         type=int,
-        default=1,
+        default=10,
         help="tests/data/texts 内の追加テキストを何度ループするか (該当ファイルがある場合のみ)。",
     )
     args = parser.parse_args()

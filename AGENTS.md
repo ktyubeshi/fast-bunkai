@@ -34,9 +34,9 @@ FastBunkai is a Rust + Python hybrid implementation of the bunkai sentence bound
   - Benchmarks JapaneseとEnglishの長文コーパスをそれぞれ繰り返し実行し、bunkaiとの速度比較を行う。
   - デフォルトでは内部で正確性チェックを実施してから計測する。
   - 実行例:
-    ```bash
-    uv run python scripts/benchmark.py --repeats 3 --jp-loops 100 --en-loops 100
-    ```
+  ```bash
+  uv run python scripts/benchmark.py --repeats 3 --jp-loops 100 --en-loops 100 --custom-loops 10
+  ```
   - 出力例（2025-10-10計測）:
     - Japanese corpus (200 docs): bunkai 平均 255.24 ms, fast-bunkai 平均 5.63 ms → 約45.33倍高速。
     - English corpus (200 docs): bunkai 平均 210.63 ms, fast-bunkai 平均 4.94 ms → 約42.67倍高速。
