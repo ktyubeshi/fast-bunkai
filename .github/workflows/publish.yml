@@ -12,18 +12,31 @@ jobs:
       matrix:
         include:
           - name: linux-x86_64
-            args: --release --target x86_64-unknown-linux-gnu --compatibility manylinux_2_28 --out dist --sdist
+            target: x86_64-unknown-linux-gnu
+            manylinux: manylinux_2_28
+            sdist: 'true'
+            cross: 'false'
           - name: linux-aarch64
-            args: --release --target aarch64-unknown-linux-gnu --compatibility manylinux_2_28 --out dist
+            target: aarch64-unknown-linux-gnu
+            manylinux: manylinux_2_28
+            sdist: 'false'
+            cross: 'true'
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+
+      - name: Setup QEMU
+        if: ${{ matrix.cross == 'true' }}
+        uses: docker/setup-qemu-action@v3
 
       - name: Build wheels (Linux)
         uses: PyO3/maturin-action@v1
         with:
           command: build
-          args: ${{ matrix.args }}
+          target: ${{ matrix.target }}
+          manylinux: ${{ matrix.manylinux }}
+          args: --release
+          sdist: ${{ matrix.sdist == 'true' }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
