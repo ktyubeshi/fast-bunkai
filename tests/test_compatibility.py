@@ -40,6 +40,16 @@ EDGE_CASE_TEXTS = [
 ]
 
 
+PIPELINE_FOCUSED_TEXTS = [
+    "顔文字(ノ´∀`*)ありがとう。すぐ返信するね。",
+    "速報🚀✨Python3.13が来た！Rustも追随予定！",
+    "彼は『やるって』と笑っていた。明日も来るらしい。",
+    "バージョンv1.2.3を配布中。サーバーは127.0.0.1です。",
+    "得点は12.5点だったが、No.10の選手が逆転した。",
+    "引用文? という質問に困った。フォーラムで議論しよう。",
+    "Twitter風投稿: Python🐍で書いてRust🦀で最適化するよ！ #dev #fast",
+    "改行テスト\n\nここで強制的に区切る。さらに続く。",
+]
 
 
 def _load_fixture_texts() -> List[str]:
@@ -52,7 +62,9 @@ def _load_fixture_texts() -> List[str]:
 FILE_TEXTS: Tuple[str, ...] = tuple(_load_fixture_texts())
 
 
-ALL_TEXTS: Tuple[str, ...] = tuple(SAMPLE_TEXTS + EDGE_CASE_TEXTS + list(FILE_TEXTS))
+ALL_TEXTS: Tuple[str, ...] = tuple(
+    SAMPLE_TEXTS + EDGE_CASE_TEXTS + PIPELINE_FOCUSED_TEXTS + list(FILE_TEXTS)
+)
 
 
 def collect_sentence_boundaries(ann) -> List[int]:
