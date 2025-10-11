@@ -34,6 +34,7 @@ See `README.md` for quick start instructions, CLI usage examples, up-to-date ben
 ## Benchmarking
 - Script: `scripts/benchmark.py`
   - Benchmarks JapaneseとEnglishの長文コーパスをそれぞれ繰り返し実行し、bunkaiとの速度比較を行う。
+  - `custom`（Long text）コーパスは `tests/texts/` ディレクトリの長文サンプルを使用し、絵文字・句読点・疑問符が混在するケースで差を検証する。
   - デフォルトでは内部で正確性チェックを実施してから計測する。
   - 実行例:
   ```bash
