@@ -81,11 +81,13 @@ uv run python scripts/benchmark.py --repeats 3 --jp-loops 100 --en-loops 100 --c
 
 Recent GitHub Actions run (2025-10-11) produced the following averages:
 
-| Corpus    | Docs | bunkai (mean) | fast-bunkai (mean) | Speedup |
-|-----------|------|---------------|--------------------|---------|
-| Japanese  | 200  | 547.04 ms     | 10.59 ms           | 51.65×  |
-| English   | 200  | 407.15 ms     | 9.55 ms            | 42.62×  |
-| Custom    | 20   | 2643.27 ms    | 8.81 ms            | 299.92× |
+| Corpus     | Docs | bunkai (mean) | fast-bunkai (mean) | Speedup |
+|------------|------|---------------|--------------------|---------|
+| Japanese   | 200  | 257.06 ms     | 5.53 ms            | 46.45×  |
+| English    | 200  | 212.21 ms     | 4.92 ms            | 43.15×  |
+| Long text* | 20   | 1323.61 ms    | 4.75 ms            | 278.49× |
+
+*Long text corpus contains mixed Japanese/English paragraphs with emojis and special cases.
 
 Actual numbers vary by hardware, but the Rust core consistently outperforms pure Python bunkai by an order of magnitude or more.
 
