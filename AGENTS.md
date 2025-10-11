@@ -56,9 +56,10 @@ FastBunkai is a Rust + Python hybrid implementation of the bunkai sentence bound
    cargo test face_mark_detection_matches_reference
    ```
 4. ベンチマークで性能確認:
-   ```bash
-   uv run python scripts/benchmark.py --repeats 3 --jp-loops 100 --en-loops 100
-   ```
+  ```bash
+  uv run python scripts/benchmark.py --repeats 3 --jp-loops 100 --en-loops 100 --custom-loops 10
+  ```
+  *ベンチマークは時間がかかるため、GitHub Actions の `CI` ワークフローでのみ実行し、リリースフローではスキップする。*
 
 ## Tooling & Quality Gates
 - **tox 環境**
@@ -74,6 +75,9 @@ FastBunkai is a Rust + Python hybrid implementation of the bunkai sentence bound
   uv run tox -e pytests,lint,typecheck,rust-fmt,rust-clippy
   ```
 
+- GitHub Actions:
+  - `CI`: PR/`main` で tox 全環境とベンチマークを実行。
+  - `Publish to PyPI`: `v*` タグ push で起動し、`uv sync --locked` → `uv build` → `tests/smoke_test.py` → `uv publish`（Trusted Publishing 前提）。
 ## Thread Safety & Concurrency
 - Rust側の `segment_impl` はArcやグローバル可変状態を保持せず、文字列ビューをローカルに確保するため、複数スレッドから安全に呼び出し可能。
 - Python側も特別なキャッシュを持たず、FastBunkaiインスタンスはステートレスに複数スレッド／asyncタスクから利用できる設計となっている。
