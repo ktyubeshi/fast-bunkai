@@ -78,7 +78,6 @@ FastBunkai is a Rust + Python hybrid implementation of the bunkai sentence bound
 - GitHub Actions:
   - `CI`: PR/`main` で tox 全環境とベンチマークを実行。
   - `Publish to PyPI`: `v*` タグ push で起動し、`uv sync --locked` → `uv build` → `tests/smoke_test.py` → `uv publish`（Trusted Publishing 前提）。
-
 ## Thread Safety & Concurrency
 - Rust側の `segment_impl` はArcやグローバル可変状態を保持せず、文字列ビューをローカルに確保するため、複数スレッドから安全に呼び出し可能。
 - Python側も特別なキャッシュを持たず、FastBunkaiインスタンスはステートレスに複数スレッド／asyncタスクから利用できる設計となっている。
