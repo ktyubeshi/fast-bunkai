@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import statistics
 import time
+from pathlib import Path
 from typing import Iterable, List
 
 from bunkai import Bunkai
@@ -37,6 +38,13 @@ ENGLISH_PASSAGES = [
         " Later on, they climbed down the staircase and paused for a break.\n"
     ),
 ]
+
+
+def load_external_texts() -> List[str]:
+    data_dir = Path(__file__).resolve().parents[1] / "tests" / "data" / "texts"
+    if not data_dir.is_dir():
+        return []
+    return [path.read_text(encoding="utf-8") for path in sorted(data_dir.glob("*.txt"))]
 
 
 def ensure_correctness(reference: Bunkai, candidate: FastBunkai, texts: Iterable[str]) -> None:
@@ -73,18 +81,29 @@ def main() -> None:
     parser.add_argument(
         "--en-loops", type=int, default=200, help="繰り返して使う英語テキストのループ回数。"
     )
+    parser.add_argument(
+        "--custom-loops",
+        type=int,
+        default=1,
+        help="tests/data/texts 内の追加テキストを何度ループするか (該当ファイルがある場合のみ)。",
+    )
     args = parser.parse_args()
 
     bunkai_ref = Bunkai()
     fast = FastBunkai()
 
-    sample_texts = JAPANESE_PASSAGES + ENGLISH_PASSAGES
+    external_texts = load_external_texts()
+
+    sample_texts = list(JAPANESE_PASSAGES + ENGLISH_PASSAGES + external_texts)
     ensure_correctness(bunkai_ref, fast, sample_texts)
 
     corpora = {
         "Japanese": JAPANESE_PASSAGES * args.jp_loops,
         "English": ENGLISH_PASSAGES * args.en_loops,
     }
+
+    if external_texts:
+        corpora["Custom"] = external_texts * max(args.custom_loops, 1)
 
     def pretty(label: str, samples: List[float]) -> str:
         mean = statistics.mean(samples)

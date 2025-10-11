@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 from typing import Iterable, List, Tuple
 
 import pytest
@@ -39,7 +40,19 @@ EDGE_CASE_TEXTS = [
 ]
 
 
-ALL_TEXTS: Tuple[str, ...] = tuple(SAMPLE_TEXTS + EDGE_CASE_TEXTS)
+
+
+def _load_fixture_texts() -> List[str]:
+    data_dir = Path(__file__).parent / "data" / "texts"
+    if not data_dir.is_dir():
+        return []
+    return [path.read_text(encoding="utf-8") for path in sorted(data_dir.glob("*.txt"))]
+
+
+FILE_TEXTS: Tuple[str, ...] = tuple(_load_fixture_texts())
+
+
+ALL_TEXTS: Tuple[str, ...] = tuple(SAMPLE_TEXTS + EDGE_CASE_TEXTS + list(FILE_TEXTS))
 
 
 def collect_sentence_boundaries(ann) -> List[int]:

@@ -810,4 +810,29 @@ mod tests {
         assert_eq!(span.end, 10);
         assert_eq!(span.split_value.as_deref(), Some("(*^_^*)"));
     }
+
+    #[test]
+    fn indirect_quote_handles_question_particle_followed_by_to() {
+        let text = "スタッフ? と話し込み。";
+        let view = TextView::new(text);
+        let spans = build_spans_from_regex(
+            &view,
+            "BasicRule",
+            Some("BasicRule"),
+            &BASIC_RULE_REGEX,
+        );
+        let target = spans
+            .iter()
+            .find(|span| span.start == 4 && span.end == 6)
+            .expect("expected basic rule span");
+        assert!(is_exception_particle(&view, target.start, target.end));
+    }
+
+    #[test]
+    fn segment_pipeline_matches_bunkai_for_staff_question_case() {
+        let text = "スタッフ? と話し込み。";
+        let output = segment_impl(text);
+        let final_bounds = output.final_boundaries;
+        assert_eq!(final_bounds, vec![12]);
+    }
 }
