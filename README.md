@@ -4,9 +4,9 @@
 [![Publish](https://github.com/hotchpotch/fast-bunkai/actions/workflows/publish.yml/badge.svg)](https://github.com/hotchpotch/fast-bunkai/actions/workflows/publish.yml)
 [![PyPI](https://img.shields.io/pypi/v/fast-bunkai.svg)](https://pypi.org/project/fast-bunkai/)
 
-⚡ FastBunkai is a Python library that splits long Japanese and English texts into natural sentences, providing a highly compatible API with [megagonlabs/bunkai](https://github.com/megagonlabs/bunkai) while its Rust core unlocks drastic speedups.
+⚡ FastBunkai is a Python library that splits long Japanese and English texts into natural sentences, providing a highly compatible API with [megagonlabs/bunkai](https://github.com/megagonlabs/bunkai) while its Rust core delivers roughly 40–285× faster segmentation than the original Python implementation.
 
-⚡ fast-bunkai は、日本語・英語の長い文章を自然な文単位に切り出すための Python ライブラリです。純粋 Python 実装である [megagonlabs/bunkai](https://github.com/megagonlabs/bunkai) と高い互換性がある API を提供しつつ、内部を Rust で最適化することで大幅な高速化を実現しています。
+⚡ fast-bunkai は、日本語・英語の長い文章を自然な文単位に切り出すための Python ライブラリです。純粋 Python 実装である [megagonlabs/bunkai](https://github.com/megagonlabs/bunkai) と高い互換性がある API を提供しつつ、内部を Rust で最適化することで、オリジナルの Python 版と比べ約40〜285倍の高速化を実現しています。
 
 ---
 
@@ -27,7 +27,7 @@
 
 - 🔁 **Drop-in replacement**: mirrors the `FastBunkai` / `Bunkai` APIs and annotations, including Janome-based morphological spans.
 - 🦀 **Rust-powered core**: heavy annotators (facemark, emoji, dot exceptions, indirect quotes, etc.) run inside a PyO3 module that releases the Python GIL.
-- ⚡ **Serious speed**: real-world workloads observe 40×–300× faster segmentation than pure Python bunkai (details below).
+- ⚡ **Serious speed**: real-world workloads observe 40×–285× faster segmentation than pure Python bunkai (details below).
 - 🧵 **Thread-safe by design**: no global mutable state; calling `FastBunkai` concurrently from threads or asyncio tasks is supported.
 - 🛫 **CLI parity**: ships a `fast-bunkai` executable compatible with bunkai’s pipe-friendly interface and `--ma` morphological mode.
 
@@ -108,15 +108,15 @@ Reproduce the bundled benchmark suite (correctness check + timing vs. bunkai):
 uv run python scripts/benchmark.py --repeats 3 --jp-loops 100 --en-loops 100 --custom-loops 10
 ```
 
-Latest GitHub Actions run (2025-10-11) reported:
+Latest local run (2025-10-11) reported:
 
 | Corpus     | Docs | bunkai (mean) | fast-bunkai (mean) | Speedup |
 |------------|------|---------------|--------------------|---------|
-| Japanese   | 200  | 257.06 ms     | 5.53 ms            | 46.45×  |
-| English    | 200  | 212.21 ms     | 4.92 ms            | 43.15×  |
-| Long text* | 20   | 1323.61 ms    | 4.75 ms            | 278.49× |
+| Japanese   | 200  | 253.92 ms     | 5.55 ms            | 45.72×  |
+| English    | 200  | 209.77 ms     | 4.94 ms            | 42.48×  |
+| Long text* | 20   | 1330.95 ms    | 4.67 ms            | 285.10× |
 
-*Long text corpus contains mixed Japanese/English paragraphs with emojis and special cases.
+*Long text corpus contains mixed Japanese/English paragraphs with emojis and edge cases; the Rust pipeline processes characters in a single pass, whereas pure Python bunkai stacks regex scans, so the gap widens dramatically on longer documents.
 
 Actual numbers vary by hardware, but the Rust core consistently outperforms pure Python bunkai by an order of magnitude or more.
 
