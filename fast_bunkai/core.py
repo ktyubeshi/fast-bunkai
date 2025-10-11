@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from typing import Dict, Iterable, Iterator, List
+from typing import TYPE_CHECKING, Any, Iterator, List, Sequence, cast
+
+if TYPE_CHECKING:
+    from ._fast_bunkai import SegmentResult
 
 from janome.tokenizer import Tokenizer
 
@@ -54,14 +57,15 @@ class FastBunkaiSentenceBoundaryDisambiguation:
 
         return annotations
 
-    def _segment(self, text: str) -> Dict[str, List]:
+    def _segment(self, text: str) -> "SegmentResult":
         return _fast_bunkai.segment(text)
 
     def _build_morph_layer(self, text: str) -> List[SpanAnnotation]:
         tokenizer = self._tokenizer_factory()
         spans: List[SpanAnnotation] = []
         start_index = 0
-        for token in tokenizer.tokenize(text):
+        tokens: Sequence[Any] = cast(Sequence[Any], tokenizer.tokenize(text))
+        for token in tokens:
             surface = token.surface
             length = len(surface)
             token_result = TokenResult(

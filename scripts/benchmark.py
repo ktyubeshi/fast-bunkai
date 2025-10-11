@@ -10,7 +10,6 @@ from bunkai import Bunkai
 
 from fast_bunkai import FastBunkai
 
-
 JAPANESE_PASSAGES = [
     (
         "本日は晴天なり。スタッフ? と話し込み。合宿免許? の若者さん達でしょうか。"
@@ -34,15 +33,13 @@ ENGLISH_PASSAGES = [
     ),
     (
         "This paragraph exists solely to benchmark FastBunkai. Room No.411 was assigned."
-        " The guide said, \"Staff? kept talking.\" The mailing list is hello@example.org."
+        ' The guide said, "Staff? kept talking." The mailing list is hello@example.org.'
         " Later on, they climbed down the staircase and paused for a break.\n"
     ),
 ]
 
 
-def ensure_correctness(
-    reference: Bunkai, candidate: FastBunkai, texts: Iterable[str]
-) -> None:
+def ensure_correctness(reference: Bunkai, candidate: FastBunkai, texts: Iterable[str]) -> None:
     for text in texts:
         ref = list(reference(text))
         cand = list(candidate(text))
@@ -70,8 +67,12 @@ def main() -> None:
         default=5,
         help="Number of benchmark repetitions (default: 5).",
     )
-    parser.add_argument("--jp-loops", type=int, default=200, help="繰り返して使う日本語テキストのループ回数。")
-    parser.add_argument("--en-loops", type=int, default=200, help="繰り返して使う英語テキストのループ回数。")
+    parser.add_argument(
+        "--jp-loops", type=int, default=200, help="繰り返して使う日本語テキストのループ回数。"
+    )
+    parser.add_argument(
+        "--en-loops", type=int, default=200, help="繰り返して使う英語テキストのループ回数。"
+    )
     args = parser.parse_args()
 
     bunkai_ref = Bunkai()
@@ -88,7 +89,7 @@ def main() -> None:
     def pretty(label: str, samples: List[float]) -> str:
         mean = statistics.mean(samples)
         stdev = statistics.stdev(samples) if len(samples) > 1 else 0.0
-        return f"{label}: mean={mean*1000:.2f} ms, stdev={stdev*1000:.2f} ms"
+        return f"{label}: mean={mean * 1000:.2f} ms, stdev={stdev * 1000:.2f} ms"
 
     for name, texts in corpora.items():
         ref_timings = measure(bunkai_ref, texts, args.repeats)

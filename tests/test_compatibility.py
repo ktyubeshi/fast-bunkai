@@ -5,11 +5,9 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Iterable, List, Tuple
 
 import pytest
-
 from bunkai import Bunkai
 
 from fast_bunkai import FastBunkai
-
 
 SAMPLE_TEXTS = [
     "こんにちは。ありがとう。",

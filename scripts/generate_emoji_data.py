@@ -7,7 +7,7 @@ import argparse
 import pathlib
 
 import emoji
-import emojis
+from emojis import db as emojis_db
 
 
 def build_entries() -> list[tuple[int, str | None]]:
@@ -15,9 +15,9 @@ def build_entries() -> list[tuple[int, str | None]]:
     for char, meta in emoji.EMOJI_DATA.items():  # type: ignore[attr-defined]
         if len(char) != 1:
             continue
-        info = emojis.db.get_emoji_by_code(char)
+        info = emojis_db.get_emoji_by_code(char)
         if info is None:
-            info = emojis.db.get_emoji_by_code(f"{char}\ufe0f")
+            info = emojis_db.get_emoji_by_code(f"{char}\ufe0f")
         category = info.category if info is not None else None
         entries.append((ord(char), category))
     entries.sort(key=lambda item: item[0])

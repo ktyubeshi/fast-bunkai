@@ -60,6 +60,20 @@ FastBunkai is a Rust + Python hybrid implementation of the bunkai sentence bound
    uv run python scripts/benchmark.py --repeats 3 --jp-loops 100 --en-loops 100
    ```
 
+## Tooling & Quality Gates
+- **tox 環境**
+  - `pytests`: `uv run pytest --maxfail=1 --durations=5`
+  - `lint`: `uv run ruff check .`
+  - `format-check`: `uv run ruff format --check --diff`
+  - `typecheck`: `uv run pyright .`
+  - `rust-fmt`: `cargo fmt --all -- --check`
+  - `rust-clippy`: `cargo clippy --all-targets -- -D warnings`
+- Python ライブラリのリンター／フォーマッタには Ruff（`tool.ruff`）を利用し、型チェックは Pyright (`tool.pyright`) を使用する。
+- tox 実行例:
+  ```bash
+  uv run tox -e pytests,lint,typecheck,rust-fmt,rust-clippy
+  ```
+
 ## Thread Safety & Concurrency
 - Rust側の `segment_impl` はArcやグローバル可変状態を保持せず、文字列ビューをローカルに確保するため、複数スレッドから安全に呼び出し可能。
 - Python側も特別なキャッシュを持たず、FastBunkaiインスタンスはステートレスに複数スレッド／asyncタスクから利用できる設計となっている。

@@ -782,6 +782,7 @@ fn pipeline_output_to_py(py: Python<'_>, output: PipelineOutput) -> PyResult<PyO
     Ok(dict.into_py(py))
 }
 
+#[allow(clippy::useless_conversion)]
 #[pyfunction]
 fn segment(py: Python<'_>, text: &str) -> PyResult<PyObject> {
     let output = py.allow_threads(|| segment_impl(text));
