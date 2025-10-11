@@ -1,6 +1,5 @@
 # ⚡ fast-bunkai
 
-[![CI](https://github.com/hotchpotch/fast-bunkai/actions/workflows/ci.yml/badge.svg)](https://github.com/hotchpotch/fast-bunkai/actions/workflows/ci.yml)
 [![Publish](https://github.com/hotchpotch/fast-bunkai/actions/workflows/publish.yml/badge.svg)](https://github.com/hotchpotch/fast-bunkai/actions/workflows/publish.yml)
 [![PyPI](https://img.shields.io/pypi/v/fast-bunkai.svg)](https://pypi.org/project/fast-bunkai/)
 
