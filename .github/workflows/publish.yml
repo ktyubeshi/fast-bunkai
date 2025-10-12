@@ -70,6 +70,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
       - name: Build wheels (Windows x86_64)
         uses: PyO3/maturin-action@v1
         with:
