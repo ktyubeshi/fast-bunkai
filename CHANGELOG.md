@@ -13,10 +13,10 @@ All notable changes to this project will be documented in this file.
   macOS artifacts in the release workflow.
 
 ### Documentation & CI
-- Refreshed README benchmarks and compatibility guidance, and tuned PR/CI
-  workflows for documentation-only changes.
+- Refreshed README benchmarks and compatibility guidance, tuned PR/CI
+  workflows for documentation-only changes, and documented the release
+  checklist stressing full diff reviews before publishing.
 
 ## [0.1.0] - 2025-10-10
 
 - Initial release.
-
