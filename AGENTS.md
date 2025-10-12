@@ -57,6 +57,7 @@ Refer to `README.md` for quick-start instructions, CLI examples, current benchma
 `segment_impl` keeps all state local, so multiple threads can call into the pipeline safely. The Python wrapper stores no mutable shared state, allowing reuse of a `FastBunkai` instance across threads or asyncio tasks.
 
 ## Additional Tips
+- Minimum supported CPython version: 3.10 (extension built with abi3-py310).
 - Import FastBunkai as a bunkai replacement: `from fast_bunkai import FastBunkai as Bunkai`.
 - Regenerate emoji metadata whenever the underlying datasets or packages update.
 - Benchmark results are hardware-dependent; rerun them on release targets before quoting numbers.

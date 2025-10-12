@@ -11,6 +11,8 @@ All notable changes to this project will be documented in this file.
 ### Packaging
 - Build and publish `x86_64-pc-windows-msvc` wheels alongside existing Linux and
   macOS artifacts in the release workflow.
+- Lowered the minimum supported Python version to 3.10 and updated the abi3
+  target accordingly.
 
 ### Documentation & CI
 - Refreshed README benchmarks and compatibility guidance, tuned PR/CI
