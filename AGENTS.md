@@ -64,6 +64,15 @@ See `README.md` for quick start instructions, CLI usage examples, up-to-date ben
   ```
   *ベンチマークは時間がかかるため、GitHub Actions の `CI` ワークフローでのみ実行し、リリースフローではスキップする。*
 
+## Release Workflow
+1. ブランチを最新 `origin/main` から切る: `git checkout -b release/vX.Y.Z origin/main`
+2. `pyproject.toml`・`Cargo.toml`・`Cargo.lock` を新バージョンへ更新し、`CHANGELOG.md` にエントリを追加する。
+3. 変更点のサマリを `CHANGELOG.md` に整理し、必要に応じて `README.md` などの公開情報も更新する。
+4. テストを実行: `uv run tox`。必要なら公開ベンチも `scripts/benchmark.py` を参照して実行する。
+5. コミット後、`gh pr create --base main --head release/vX.Y.Z --title "Release vX.Y.Z" --body "<要約/テスト結果>` を使ってリリースPRを作成する。`gh` が利用できない場合は手動でPRを作成し、本文に v前バージョン からの差分を記載する。
+6. PRをマージ後、ローカルを `main` に戻しタグを作成: `git tag vX.Y.Z && git push origin vX.Y.Z`。Trusted Publishing が有効なためタグ push で `.github/workflows/publish.yml` が走る。
+7. リリースノートを追加する場合は `gh release create vX.Y.Z --generate-notes` などを利用し、PyPI公開と同時にGitHub Releasesも更新する。
+
 ## Tooling & Quality Gates
 - **tox 環境**
   - `pytests`: `uv run pytest --maxfail=1 --durations=5`
