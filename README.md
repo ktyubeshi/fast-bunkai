@@ -135,6 +135,13 @@ FastBunkai now exposes its segmentation logic as a reusable Rust crate:
 fast-bunkai-rs = { path = "crates/fast-bunkai-rs" }
 ```
 
+To depend on the crate directly from this repository:
+
+```toml
+[dependencies]
+fast-bunkai-rs = { git = "<Repository_URL>", package = "fast-bunkai-rs" }
+```
+
 ```rust
 use fast_bunkai_rs::Segmenter;
 
