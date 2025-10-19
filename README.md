@@ -121,22 +121,44 @@ Actual numbers vary by hardware, but the Rust core consistently outperforms pure
 
 ## 🧠 Architecture Snapshot
 
-- 🦀 **Rust core (`src/lib.rs`)**: facemark & emoji annotators, dot/number exceptions, indirect quote handling, and more. Uses PyO3 `abi3` bindings and releases the GIL with `py.allow_threads`.
-- 😀 **Emoji metadata (`src/emoji_data.rs`)**: generated via `scripts/generate_emoji_data.py`, mapping Unicode codepoints to bunkai-compatible categories.
-- 🐍 **Python layer (`fast_bunkai/`)**: wraps the Rust `segment` function, mirrors bunkai annotations with dataclasses, and builds Janome spans through `MorphAnnotatorJanome` for drop-in parity.
+- 🦀 **Rust core (`crates/fast-bunkai-rs/src/lib.rs`)**: facemark & emoji annotators, dot/number exceptions, indirect quote handling, and more.
+- 😀 **Emoji metadata (`crates/fast-bunkai-rs/src/emoji_data.rs`)**: generated via `scripts/generate_emoji_data.py`, mapping Unicode codepoints to bunkai-compatible categories.
+- 🔌 **PyO3 bridge (`src/lib.rs`)**: wraps the core crate as an abi3-compatible extension module and releases the GIL with `py.allow_threads`.
+- 🐍 **Python layer (`fast_bunkai/`)**: mirrors bunkai annotations with dataclasses and builds Janome spans through `MorphAnnotatorJanome` for drop-in parity.
+
+## 🦀 Using from Rust
+
+FastBunkai now exposes its segmentation logic as a reusable Rust crate:
+
+```toml
+[dependencies]
+fast-bunkai-rs = { path = "crates/fast-bunkai-rs" }
+```
+
+```rust
+use fast_bunkai_rs::Segmenter;
+
+let text = "こんにちは。ありがとう。"; // UTF-8 input
+let segmenter = Segmenter::new();
+let result = segmenter.segment(text);
+
+for (start, end) in result.sentence_byte_ranges(text) {
+    println!("{}", &text[start..end]);
+}
+```
 
 ## 🛠️ Development Workflow
 
 ```bash
 uv sync --reinstall
 uv run python scripts/generate_emoji_data.py  # regenerate emoji table when emoji libs change
-uv run tox -e pytests,lint,typecheck,rust-fmt,rust-clippy
+uv run tox -e pytests,lint,typecheck,rust-fmt,rust-clippy,rust-tests
 ```
 
 For manual Rust checks:
 
 ```bash
-cargo test face_mark_detection_matches_reference
+cargo test -p fast-bunkai-rs face_mark_detection_matches_reference
 cargo fmt --all
 cargo clippy --all-targets -- -D warnings
 ```

@@ -1,0 +1,13 @@
+[package]
+name = "fast-bunkai-rs"
+version = "0.1.0"
+edition = "2021"
+description = "Core sentence segmentation logic for fast-bunkai"
+license = "Apache-2.0"
+
+[lib]
+name = "fast_bunkai_rs"
+
+[dependencies]
+once_cell = "1.19"
+regex = "1.11"

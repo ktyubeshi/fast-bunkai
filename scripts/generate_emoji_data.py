@@ -46,7 +46,7 @@ def main() -> None:
     parser.add_argument(
         "--output",
         type=pathlib.Path,
-        default=pathlib.Path("src/emoji_data.rs"),
+        default=pathlib.Path("crates/fast-bunkai-rs/src/emoji_data.rs"),
         help="Path to the Rust source file to overwrite.",
     )
     args = parser.parse_args()

@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased] - 2025-10-19
+
+### Added
+- Expose the segmentation pipeline as a reusable `fast-bunkai-rs` Rust crate and document direct Rust usage examples.
+
+### Changed
+- Wire the PyO3 extension to the new core crate, update the emoji generation script path, and run `cargo test -p fast-bunkai-rs` via tox.
+
 ## [0.1.1] - 2025-10-12
 
 ### Added
