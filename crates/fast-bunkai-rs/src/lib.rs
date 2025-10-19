@@ -8,7 +8,7 @@ use std::collections::{HashMap, HashSet};
 const BASIC_RULE_RE: &str = "[。!?.！？．]+\\s*";
 const LINEBREAK_RE: &str = "[\\n\\s]*\\n[\\n\\s]*";
 
-const TARGET_EMOJI_CATEGORIES: &[&str] = &["Smileys & Emotion", "Symbols"];
+const TARGET_EMOJI_FLAGS: u8 = emoji_data::FLAG_SMILEYS_EMOTION | emoji_data::FLAG_SYMBOLS;
 const INDIRECT_RULE_TARGETS: &[&str] = &[
     "first",
     "BasicRule",
@@ -35,14 +35,6 @@ const MORPHEME_RULES: &[&[&str]] = &[
 
 static BASIC_RULE_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(BASIC_RULE_RE).unwrap());
 static LINEBREAK_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(LINEBREAK_RE).unwrap());
-
-static EMOJI_CATEGORY_MAP: Lazy<HashMap<u32, Option<&'static str>>> = Lazy::new(|| {
-    let mut map = HashMap::with_capacity(emoji_data::EMOJI_DATA.len());
-    for (codepoint, category) in emoji_data::EMOJI_DATA.iter().copied() {
-        map.insert(codepoint, category);
-    }
-    map
-});
 
 const FACE_SYMBOL_RANGES: &[(char, char)] = &[
     ('!', '/'),
@@ -331,7 +323,15 @@ impl<'a> TextView<'a> {
 struct EmojiSpan {
     start: usize,
     end: usize,
-    categories: Vec<Option<&'static str>>,
+    flags: u8,
+}
+
+#[inline]
+fn emoji_flags(codepoint: u32) -> u8 {
+    match emoji_data::EMOJI_DATA.binary_search_by_key(&codepoint, |entry| entry.code) {
+        Ok(index) => emoji_data::EMOJI_DATA[index].flags,
+        Err(_) => 0,
+    }
 }
 
 fn is_in_ranges(ch: char, ranges: &[(char, char)]) -> bool {
@@ -536,12 +536,7 @@ fn build_emoji_spans(view: &TextView<'_>) -> Vec<SpanRecord> {
     spans
         .into_iter()
         .filter(|span| span.end > span.start)
-        .filter(|span| {
-            span.categories
-                .iter()
-                .flatten()
-                .any(|cat| TARGET_EMOJI_CATEGORIES.contains(cat))
-        })
+        .filter(|span| span.flags & TARGET_EMOJI_FLAGS != 0)
         .map(|span| SpanRecord {
             rule_name: "EmojiAnnotator",
             start: span.start,
@@ -554,21 +549,22 @@ fn build_emoji_spans(view: &TextView<'_>) -> Vec<SpanRecord> {
 
 fn find_emoji_spans(view: &TextView<'_>) -> Vec<EmojiSpan> {
     let mut spans: Vec<EmojiSpan> = Vec::new();
+    let char_len = view.char_len();
     let mut in_span = false;
     let mut start = 0usize;
-    let mut categories: Vec<Option<&'static str>> = Vec::new();
+    let mut aggregated_flags = 0u8;
 
-    for idx in 0..view.char_len() {
+    for idx in 0..char_len {
         let ch = view.char_at(idx).unwrap_or('\0');
-        let maybe_category = EMOJI_CATEGORY_MAP.get(&(ch as u32));
-        if maybe_category.is_none() {
+        let flags = emoji_flags(ch as u32);
+        if flags == 0 {
             if in_span {
                 spans.push(EmojiSpan {
                     start,
                     end: idx,
-                    categories: categories.clone(),
+                    flags: aggregated_flags,
                 });
-                categories.clear();
+                aggregated_flags = 0;
                 in_span = false;
             }
             continue;
@@ -577,22 +573,23 @@ fn find_emoji_spans(view: &TextView<'_>) -> Vec<EmojiSpan> {
         if !in_span {
             in_span = true;
             start = idx;
+            aggregated_flags = 0;
         }
-        categories.push(*maybe_category.unwrap());
+        aggregated_flags |= flags;
 
-        let next_is_emoji = if idx + 1 < view.char_len() {
+        let next_flags = if idx + 1 < char_len {
             let next_ch = view.char_at(idx + 1).unwrap_or('\0') as u32;
-            EMOJI_CATEGORY_MAP.contains_key(&next_ch)
+            emoji_flags(next_ch)
         } else {
-            false
+            0
         };
-        if !next_is_emoji {
+        if next_flags == 0 {
             spans.push(EmojiSpan {
                 start,
                 end: idx + 1,
-                categories: categories.clone(),
+                flags: aggregated_flags,
             });
-            categories.clear();
+            aggregated_flags = 0;
             in_span = false;
         }
     }
@@ -600,8 +597,8 @@ fn find_emoji_spans(view: &TextView<'_>) -> Vec<EmojiSpan> {
     if in_span {
         spans.push(EmojiSpan {
             start,
-            end: view.char_len(),
-            categories,
+            end: char_len,
+            flags: aggregated_flags,
         });
     }
 
