@@ -9,7 +9,6 @@ import pathlib
 import emoji
 from emojis import db as emojis_db
 
-
 CATEGORY_FLAG_ORDER: list[tuple[str, str]] = [
     ("Smileys & Emotion", "FLAG_SMILEYS_EMOTION"),
     ("Symbols", "FLAG_SYMBOLS"),

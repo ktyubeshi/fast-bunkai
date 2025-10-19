@@ -1,12 +1,7 @@
 mod emoji_data;
 
-use once_cell::sync::Lazy;
-use regex::Regex;
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
-
-const BASIC_RULE_RE: &str = "[。!?.！？．]+\\s*";
-const LINEBREAK_RE: &str = "[\\n\\s]*\\n[\\n\\s]*";
 
 const TARGET_EMOJI_FLAGS: u8 = emoji_data::FLAG_SMILEYS_EMOTION | emoji_data::FLAG_SYMBOLS;
 const INDIRECT_RULE_TARGETS: &[&str] = &[
@@ -32,9 +27,6 @@ const MORPHEME_RULES: &[&[&str]] = &[
     &["も", "あり"],
     &["ほど", "でし"],
 ];
-
-static BASIC_RULE_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(BASIC_RULE_RE).unwrap());
-static LINEBREAK_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(LINEBREAK_RE).unwrap());
 
 const FACE_SYMBOL_RANGES: &[(char, char)] = &[
     ('!', '/'),
@@ -272,10 +264,6 @@ impl<'a> TextView<'a> {
         }
     }
 
-    fn text(&self) -> &'a str {
-        self.text
-    }
-
     fn char_len(&self) -> usize {
         self.chars.len()
     }
@@ -296,13 +284,6 @@ impl<'a> TextView<'a> {
             self.char_to_byte[end]
         };
         &self.text[start_byte..end_byte]
-    }
-
-    fn byte_to_char_index(&self, byte: usize) -> usize {
-        match self.char_to_byte.binary_search(&byte) {
-            Ok(idx) => idx,
-            Err(idx) => idx,
-        }
     }
 
     fn starts_with(&self, index: usize, pattern: &str) -> bool {
@@ -484,6 +465,52 @@ fn find_emotion_expressions(view: &TextView<'_>) -> Vec<SpanRecord> {
     unify_span_annotations(spans)
 }
 
+#[inline]
+fn is_basic_break_char(ch: char) -> bool {
+    matches!(ch, '.' | '!' | '?' | '。' | '！' | '？' | '．')
+}
+
+fn build_basic_rule_spans(view: &TextView<'_>) -> Vec<SpanRecord> {
+    let mut spans: Vec<SpanRecord> = Vec::new();
+    let len = view.char_len();
+    let mut idx = 0usize;
+
+    while idx < len {
+        let ch = view.char_at(idx).unwrap_or('\0');
+        if !is_basic_break_char(ch) {
+            idx += 1;
+            continue;
+        }
+
+        let start = idx;
+        idx += 1;
+
+        while idx < len && is_basic_break_char(view.char_at(idx).unwrap_or('\0')) {
+            idx += 1;
+        }
+
+        let mut end = idx;
+        while idx < len {
+            let next = view.char_at(idx).unwrap_or('\0');
+            if !next.is_whitespace() {
+                break;
+            }
+            idx += 1;
+            end = idx;
+        }
+
+        spans.push(SpanRecord {
+            rule_name: "BasicRule",
+            start,
+            end,
+            split_type: Some("BasicRule"),
+            split_value: Some(view.slice(start, end).to_string()),
+        });
+    }
+
+    spans
+}
+
 fn segment_impl(text: &str) -> PipelineOutput {
     let view = TextView::new(text);
     let mut state = PipelineState::new(view.char_len());
@@ -497,8 +524,7 @@ fn segment_impl(text: &str) -> PipelineOutput {
     let emoji_spans = build_emoji_spans(&view);
     state.add_forward_rule("EmojiAnnotator", emoji_spans);
 
-    let basic_rule_spans =
-        build_spans_from_regex(&view, "BasicRule", Some("BasicRule"), &BASIC_RULE_REGEX);
+    let basic_rule_spans = build_basic_rule_spans(&view);
     state.add_forward_rule("BasicRule", basic_rule_spans);
 
     apply_indirect_quote(&view, &mut state);
@@ -507,28 +533,6 @@ fn segment_impl(text: &str) -> PipelineOutput {
     apply_linebreak_force(&view, &mut state);
 
     state.into_output()
-}
-
-fn build_spans_from_regex(
-    view: &TextView<'_>,
-    rule_name: &'static str,
-    split_type: Option<&'static str>,
-    regex: &Regex,
-) -> Vec<SpanRecord> {
-    regex
-        .find_iter(view.text())
-        .map(|m| {
-            let start = view.byte_to_char_index(m.start());
-            let end = view.byte_to_char_index(m.end());
-            SpanRecord {
-                rule_name,
-                start,
-                end,
-                split_type,
-                split_value: Some(view.slice(start, end).to_string()),
-            }
-        })
-        .collect()
 }
 
 fn build_emoji_spans(view: &TextView<'_>) -> Vec<SpanRecord> {
@@ -793,36 +797,97 @@ fn is_exception_no(view: &TextView<'_>, span: &SpanRecord) -> bool {
     next_char.is_ascii_digit()
 }
 
-fn apply_linebreak_force(view: &TextView<'_>, state: &mut PipelineState) {
-    let mut map: HashMap<usize, (usize, usize)> = HashMap::new();
-    for mat in LINEBREAK_REGEX.find_iter(view.text()) {
-        let start = view.byte_to_char_index(mat.start());
-        let end = view.byte_to_char_index(mat.end());
-        map.insert(start, (start, end));
+fn collect_linebreak_spans(view: &TextView<'_>) -> Vec<(usize, usize)> {
+    let mut spans: Vec<(usize, usize)> = Vec::new();
+    let len = view.char_len();
+    let mut idx = 0usize;
+
+    while idx < len {
+        if view.char_at(idx) != Some('\n') {
+            idx += 1;
+            continue;
+        }
+
+        let mut start = idx;
+        while start > 0 {
+            let prev = view.char_at(start - 1).unwrap_or('\0');
+            if !prev.is_whitespace() {
+                break;
+            }
+            start -= 1;
+        }
+
+        let mut end = idx + 1;
+        while end < len {
+            let next = view.char_at(end).unwrap_or('\0');
+            if !next.is_whitespace() {
+                break;
+            }
+            end += 1;
+        }
+
+        spans.push((start, end));
+        idx = end;
     }
 
-    let mut result: Vec<SpanRecord> = Vec::new();
+    spans
+}
+
+fn apply_linebreak_force(view: &TextView<'_>, state: &mut PipelineState) {
+    let linebreak_spans = collect_linebreak_spans(view);
+    if linebreak_spans.is_empty() {
+        state.add_layer("LinebreakForceAnnotator", state.final_spans().to_vec());
+        return;
+    }
+
+    let mut result: Vec<SpanRecord> =
+        Vec::with_capacity(state.final_spans().len() + linebreak_spans.len());
+    let mut used = vec![false; linebreak_spans.len()];
+
     for span in state.final_spans().iter() {
-        if let Some((lb_start, lb_end)) = map.remove(&span.end) {
-            result.push(SpanRecord {
-                rule_name: "LinebreakForceAnnotator",
-                start: lb_start,
-                end: lb_end,
-                split_type: Some("linebreak"),
-                split_value: Some(view.slice(lb_start, lb_end).to_string()),
-            });
-        } else {
+        let mut replaced = false;
+        if let Ok(mut lb_index) =
+            linebreak_spans.binary_search_by_key(&span.end, |&(start, _)| start)
+        {
+            while lb_index > 0 && linebreak_spans[lb_index - 1].0 == span.end {
+                lb_index -= 1;
+            }
+            let mut search_index = lb_index;
+            while search_index < linebreak_spans.len()
+                && linebreak_spans[search_index].0 == span.end
+            {
+                if !used[search_index] {
+                    let (lb_start, lb_end) = linebreak_spans[search_index];
+                    result.push(SpanRecord {
+                        rule_name: "LinebreakForceAnnotator",
+                        start: lb_start,
+                        end: lb_end,
+                        split_type: Some("linebreak"),
+                        split_value: Some(view.slice(lb_start, lb_end).to_string()),
+                    });
+                    used[search_index] = true;
+                    replaced = true;
+                    break;
+                }
+                search_index += 1;
+            }
+        }
+
+        if !replaced {
             result.push(span.clone());
         }
     }
 
-    for (_, (start, end)) in map.into_iter() {
+    for (index, (start, end)) in linebreak_spans.iter().enumerate() {
+        if used[index] {
+            continue;
+        }
         result.push(SpanRecord {
             rule_name: "LinebreakForceAnnotator",
-            start,
-            end,
+            start: *start,
+            end: *end,
             split_type: Some("linebreak"),
-            split_value: Some(view.slice(start, end).to_string()),
+            split_value: Some(view.slice(*start, *end).to_string()),
         });
     }
 
@@ -872,8 +937,7 @@ mod tests {
     fn indirect_quote_handles_question_particle_followed_by_to() {
         let text = "スタッフ? と話し込み。";
         let view = TextView::new(text);
-        let spans =
-            build_spans_from_regex(&view, "BasicRule", Some("BasicRule"), &BASIC_RULE_REGEX);
+        let spans = build_basic_rule_spans(&view);
         let target = spans
             .iter()
             .find(|span| span.start == 4 && span.end == 6)
