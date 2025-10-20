@@ -660,23 +660,24 @@ fn matches_rule(view: &TextView<'_>, mut index: usize, rule: &[&str]) -> bool {
 }
 
 fn unify_span_annotations(spans: Vec<SpanRecord>) -> Vec<SpanRecord> {
-    let mut map: HashMap<String, SpanRecord> = HashMap::new();
+    let mut seen: HashSet<(usize, usize, &'static str, Option<String>)> = HashSet::new();
+    let mut unique: Vec<SpanRecord> = Vec::new();
     for span in spans {
-        let key = format!(
-            "{}-{}-{}/{}",
+        let key = (
             span.start,
             span.end,
             span.rule_name,
-            span.split_value.as_deref().unwrap_or("")
+            span.split_value.clone(),
         );
-        map.entry(key).or_insert(span);
+        if seen.insert(key) {
+            unique.push(span);
+        }
     }
-    let mut values: Vec<SpanRecord> = map.into_values().collect();
-    values.sort_by(|a, b| match a.start.cmp(&b.start) {
+    unique.sort_by(|a, b| match a.start.cmp(&b.start) {
         Ordering::Equal => a.end.cmp(&b.end),
         other => other,
     });
-    values
+    unique
 }
 
 fn apply_dot_exception(view: &TextView<'_>, state: &mut PipelineState) {
