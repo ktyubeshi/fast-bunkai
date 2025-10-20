@@ -349,10 +349,10 @@ fn emoji_flags(codepoint: u32) -> u8 {
     if codepoint <= 0x7F {
         return 0;
     }
-    match emoji_data::EMOJI_DATA.binary_search_by_key(&codepoint, |entry| entry.code) {
-        Ok(index) => emoji_data::EMOJI_DATA[index].flags,
-        Err(_) => 0,
-    }
+    emoji_data::EMOJI_FLAGS
+        .get(&codepoint)
+        .copied()
+        .unwrap_or(0)
 }
 
 fn is_in_ranges(ch: char, ranges: &[(char, char)]) -> bool {
@@ -554,22 +554,22 @@ fn build_basic_rule_spans<'a>(view: &'a TextView<'a>) -> Vec<SpanRecord<'a>> {
 fn build_pipeline<'a>(view: &'a TextView<'a>) -> PipelineState<'a> {
     let mut state = PipelineState::new(view.char_len());
 
-    let face_spans = find_face_marks(&view);
+    let face_spans = find_face_marks(view);
     state.add_forward_rule("FaceMarkDetector", face_spans);
 
-    let emotion_spans = find_emotion_expressions(&view);
+    let emotion_spans = find_emotion_expressions(view);
     state.add_forward_rule("EmotionExpressionAnnotator", emotion_spans);
 
-    let emoji_spans = build_emoji_spans(&view);
+    let emoji_spans = build_emoji_spans(view);
     state.add_forward_rule("EmojiAnnotator", emoji_spans);
 
-    let basic_rule_spans = build_basic_rule_spans(&view);
+    let basic_rule_spans = build_basic_rule_spans(view);
     state.add_forward_rule("BasicRule", basic_rule_spans);
 
-    apply_indirect_quote(&view, &mut state);
-    apply_dot_exception(&view, &mut state);
-    apply_number_exception(&view, &mut state);
-    apply_linebreak_force(&view, &mut state);
+    apply_indirect_quote(view, &mut state);
+    apply_dot_exception(view, &mut state);
+    apply_number_exception(view, &mut state);
+    apply_linebreak_force(view, &mut state);
 
     state
 }
@@ -663,7 +663,7 @@ fn apply_indirect_quote<'a>(view: &'a TextView<'a>, state: &mut PipelineState<'a
                 if is_exception_particle(view, span.start, span.end) {
                     continue;
                 }
-                collected.push(span.clone());
+                collected.push(*span);
             }
         }
     }
@@ -722,7 +722,7 @@ fn apply_dot_exception<'a>(view: &'a TextView<'a>, state: &mut PipelineState<'a>
         if is_exception_numeric(view, span.start) || is_exception_mailaddress(view, span.start) {
             continue;
         }
-        filtered.push(span.clone());
+        filtered.push(*span);
     }
     state.add_layer("DotExceptionAnnotator", filtered);
 }
@@ -811,7 +811,7 @@ fn apply_number_exception<'a>(view: &'a TextView<'a>, state: &mut PipelineState<
         if is_exception_no(view, span) {
             continue;
         }
-        filtered.push(span.clone());
+        filtered.push(*span);
     }
     state.add_layer("NumberExceptionAnnotator", filtered);
 }
@@ -904,7 +904,7 @@ fn apply_linebreak_force<'a>(view: &'a TextView<'a>, state: &mut PipelineState<'
             continue;
         }
         if span.end < lb_start {
-            merged.push(span.clone());
+            merged.push(*span);
             finals_index += 1;
         } else {
             merged.push(SpanRecord {
@@ -919,7 +919,7 @@ fn apply_linebreak_force<'a>(view: &'a TextView<'a>, state: &mut PipelineState<'
     }
 
     while finals_index < final_spans.len() {
-        merged.push(final_spans[finals_index].clone());
+        merged.push(final_spans[finals_index]);
         finals_index += 1;
     }
     while linebreak_index < linebreak_spans.len() {
@@ -956,7 +956,7 @@ fn filter_previous_rule_same_span<'a>(
         }
     }
 
-    filtered.extend(previous.iter().cloned());
+    filtered.extend_from_slice(previous);
     filtered
 }
 
