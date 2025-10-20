@@ -1,4 +1,6 @@
-use fast_bunkai_rs::{segment as segment_core, Segmentation};
+use fast_bunkai_rs::{
+    segment as segment_core, segment_boundaries as segment_boundaries_core, Segmentation,
+};
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};
 
@@ -41,8 +43,8 @@ fn segment(py: Python<'_>, text: &str) -> PyResult<PyObject> {
 
 #[pyfunction]
 fn segment_boundaries(py: Python<'_>, text: &str) -> PyResult<Vec<usize>> {
-    let output = py.allow_threads(|| segment_core(text));
-    Ok(output.final_boundaries.clone())
+    let boundaries = py.allow_threads(|| segment_boundaries_core(text));
+    Ok(boundaries)
 }
 
 #[pymodule]

@@ -122,7 +122,7 @@ impl Segmenter {
     }
 
     pub fn segment(&self, text: &str) -> Segmentation {
-        segment_impl(text).into()
+        segment_impl(text)
     }
 }
 
@@ -130,28 +130,34 @@ pub fn segment(text: &str) -> Segmentation {
     Segmenter::new().segment(text)
 }
 
-#[derive(Clone, Debug)]
-struct SpanRecord {
+pub fn segment_boundaries(text: &str) -> Vec<usize> {
+    let view = TextView::new(text);
+    let state = build_pipeline(&view);
+    state.into_final_boundaries()
+}
+
+#[derive(Clone, Debug, Copy)]
+struct SpanRecord<'a> {
     rule_name: &'static str,
     start: usize,
     end: usize,
     split_type: Option<&'static str>,
-    split_value: Option<String>,
+    split_value: Option<&'a str>,
 }
 
 #[derive(Clone)]
-struct LayerOutput {
+struct LayerOutput<'a> {
     name: &'static str,
-    spans: Vec<SpanRecord>,
+    spans: Vec<SpanRecord<'a>>,
 }
 
-struct PipelineState {
-    layers: Vec<LayerOutput>,
+struct PipelineState<'a> {
+    layers: Vec<LayerOutput<'a>>,
     name_to_index: HashMap<&'static str, usize>,
     final_index: usize,
 }
 
-impl PipelineState {
+impl<'a> PipelineState<'a> {
     fn new(char_len: usize) -> Self {
         let sentinel_start = if char_len == 0 { 0 } else { char_len - 1 };
         let sentinel = SpanRecord {
@@ -174,50 +180,59 @@ impl PipelineState {
         }
     }
 
-    fn final_spans(&self) -> &[SpanRecord] {
+    fn final_spans(&self) -> &[SpanRecord<'a>] {
         &self.layers[self.final_index].spans
     }
 
-    fn get_layer(&self, name: &'static str) -> Option<&[SpanRecord]> {
+    fn get_layer(&self, name: &'static str) -> Option<&[SpanRecord<'a>]> {
         self.name_to_index
             .get(name)
             .map(|idx| self.layers[*idx].spans.as_slice())
     }
 
-    fn add_layer(&mut self, name: &'static str, spans: Vec<SpanRecord>) {
+    fn add_layer(&mut self, name: &'static str, spans: Vec<SpanRecord<'a>>) {
         let idx = self.layers.len();
         self.layers.push(LayerOutput { name, spans });
         self.name_to_index.insert(name, idx);
         self.final_index = idx;
     }
 
-    fn add_forward_rule(&mut self, name: &'static str, spans: Vec<SpanRecord>) {
+    fn add_forward_rule(&mut self, name: &'static str, spans: Vec<SpanRecord<'a>>) {
         let filtered = filter_previous_rule_same_span(spans, self.final_spans());
         self.add_layer(name, filtered);
     }
 
-    fn into_output(self) -> PipelineOutput {
-        let mut final_boundaries: Vec<usize> = self.layers[self.final_index]
-            .spans
-            .iter()
-            .map(|span| span.end)
-            .collect();
-        final_boundaries.sort_unstable();
-        final_boundaries.dedup();
+    fn into_output(self) -> PipelineOutput<'a> {
+        let final_boundaries = finalize_boundaries_from_iter(
+            self.layers[self.final_index]
+                .spans
+                .iter()
+                .map(|span| span.end),
+        );
         PipelineOutput {
             layers: self.layers,
             final_boundaries,
         }
     }
+
+    fn into_final_boundaries(self) -> Vec<usize> {
+        let final_spans = self
+            .layers
+            .into_iter()
+            .nth(self.final_index)
+            .map(|layer| layer.spans)
+            .unwrap_or_default();
+        finalize_boundaries_from_iter(final_spans.into_iter().map(|span| span.end))
+    }
 }
 
-struct PipelineOutput {
-    layers: Vec<LayerOutput>,
+struct PipelineOutput<'a> {
+    layers: Vec<LayerOutput<'a>>,
     final_boundaries: Vec<usize>,
 }
 
-impl From<PipelineOutput> for Segmentation {
-    fn from(output: PipelineOutput) -> Self {
+impl<'a> From<PipelineOutput<'a>> for Segmentation {
+    fn from(output: PipelineOutput<'a>) -> Self {
         let layers = output
             .layers
             .into_iter()
@@ -226,12 +241,22 @@ impl From<PipelineOutput> for Segmentation {
                 spans: layer
                     .spans
                     .into_iter()
-                    .map(|span| Span {
-                        rule_name: span.rule_name,
-                        start: span.start,
-                        end: span.end,
-                        split_type: span.split_type,
-                        split_value: span.split_value,
+                    .map(|span| {
+                        let SpanRecord {
+                            rule_name,
+                            start,
+                            end,
+                            split_type,
+                            split_value,
+                        } = span;
+                        let split_value = split_value.map(|value| value.to_string());
+                        Span {
+                            rule_name,
+                            start,
+                            end,
+                            split_type,
+                            split_value,
+                        }
                     })
                     .collect(),
             })
@@ -242,6 +267,16 @@ impl From<PipelineOutput> for Segmentation {
             final_boundaries: output.final_boundaries,
         }
     }
+}
+
+fn finalize_boundaries_from_iter<I>(iter: I) -> Vec<usize>
+where
+    I: Iterator<Item = usize>,
+{
+    let mut final_boundaries: Vec<usize> = iter.collect();
+    final_boundaries.sort_unstable();
+    final_boundaries.dedup();
+    final_boundaries
 }
 
 struct TextView<'a> {
@@ -347,8 +382,8 @@ fn is_face_symbol1(ch: char) -> bool {
     is_ascii_alnum(ch) || is_fullwidth_alnum(ch) || is_face_symbol2(ch)
 }
 
-fn find_face_marks(view: &TextView<'_>) -> Vec<SpanRecord> {
-    let mut spans: Vec<SpanRecord> = Vec::new();
+fn find_face_marks<'a>(view: &'a TextView<'a>) -> Vec<SpanRecord<'a>> {
+    let mut spans: Vec<SpanRecord<'a>> = Vec::new();
     let len = view.char_len();
     let mut idx = 0usize;
 
@@ -398,7 +433,7 @@ fn find_face_marks(view: &TextView<'_>) -> Vec<SpanRecord> {
             start,
             end,
             split_type: Some("facemark"),
-            split_value: Some(view.slice(start, end).to_string()),
+            split_value: Some(view.slice(start, end)),
         });
         idx = end;
     }
@@ -406,8 +441,8 @@ fn find_face_marks(view: &TextView<'_>) -> Vec<SpanRecord> {
     spans
 }
 
-fn find_emotion_expressions(view: &TextView<'_>) -> Vec<SpanRecord> {
-    let mut spans: Vec<SpanRecord> = Vec::new();
+fn find_emotion_expressions<'a>(view: &'a TextView<'a>) -> Vec<SpanRecord<'a>> {
+    let mut spans: Vec<SpanRecord<'a>> = Vec::new();
     let len = view.char_len();
 
     for idx in 0..len {
@@ -431,7 +466,7 @@ fn find_emotion_expressions(view: &TextView<'_>) -> Vec<SpanRecord> {
                         start: idx,
                         end,
                         split_type: Some("EmotionExpressionAnnotator"),
-                        split_value: Some(view.slice(idx, end).to_string()),
+                        split_value: Some(view.slice(idx, end)),
                     });
                     break;
                 }
@@ -463,7 +498,7 @@ fn find_emotion_expressions(view: &TextView<'_>) -> Vec<SpanRecord> {
             start,
             end,
             split_type: Some("EmotionExpressionAnnotator"),
-            split_value: Some(view.slice(start, end).to_string()),
+            split_value: Some(view.slice(start, end)),
         });
     }
 
@@ -475,8 +510,8 @@ fn is_basic_break_char(ch: char) -> bool {
     matches!(ch, '.' | '!' | '?' | '。' | '！' | '？' | '．')
 }
 
-fn build_basic_rule_spans(view: &TextView<'_>) -> Vec<SpanRecord> {
-    let mut spans: Vec<SpanRecord> = Vec::new();
+fn build_basic_rule_spans<'a>(view: &'a TextView<'a>) -> Vec<SpanRecord<'a>> {
+    let mut spans: Vec<SpanRecord<'a>> = Vec::new();
     let len = view.char_len();
     let mut idx = 0usize;
 
@@ -509,15 +544,14 @@ fn build_basic_rule_spans(view: &TextView<'_>) -> Vec<SpanRecord> {
             start,
             end,
             split_type: Some("BasicRule"),
-            split_value: Some(view.slice(start, end).to_string()),
+            split_value: Some(view.slice(start, end)),
         });
     }
 
     spans
 }
 
-fn segment_impl(text: &str) -> PipelineOutput {
-    let view = TextView::new(text);
+fn build_pipeline<'a>(view: &'a TextView<'a>) -> PipelineState<'a> {
     let mut state = PipelineState::new(view.char_len());
 
     let face_spans = find_face_marks(&view);
@@ -537,10 +571,17 @@ fn segment_impl(text: &str) -> PipelineOutput {
     apply_number_exception(&view, &mut state);
     apply_linebreak_force(&view, &mut state);
 
-    state.into_output()
+    state
 }
 
-fn build_emoji_spans(view: &TextView<'_>) -> Vec<SpanRecord> {
+fn segment_impl(text: &str) -> Segmentation {
+    let view = TextView::new(text);
+    let state = build_pipeline(&view);
+    let output = state.into_output();
+    Segmentation::from(output)
+}
+
+fn build_emoji_spans<'a>(view: &'a TextView<'a>) -> Vec<SpanRecord<'a>> {
     let spans = find_emoji_spans(view);
     spans
         .into_iter()
@@ -551,7 +592,7 @@ fn build_emoji_spans(view: &TextView<'_>) -> Vec<SpanRecord> {
             start: span.start,
             end: span.end,
             split_type: Some("EmojiAnnotator"),
-            split_value: Some(view.slice(span.start, span.end).to_string()),
+            split_value: Some(view.slice(span.start, span.end)),
         })
         .collect()
 }
@@ -614,8 +655,8 @@ fn find_emoji_spans(view: &TextView<'_>) -> Vec<EmojiSpan> {
     spans
 }
 
-fn apply_indirect_quote(view: &TextView<'_>, state: &mut PipelineState) {
-    let mut collected: Vec<SpanRecord> = Vec::new();
+fn apply_indirect_quote<'a>(view: &'a TextView<'a>, state: &mut PipelineState<'a>) {
+    let mut collected: Vec<SpanRecord<'a>> = Vec::new();
     for &target in INDIRECT_RULE_TARGETS {
         if let Some(layer) = state.get_layer(target) {
             for span in layer {
@@ -659,16 +700,11 @@ fn matches_rule(view: &TextView<'_>, mut index: usize, rule: &[&str]) -> bool {
     true
 }
 
-fn unify_span_annotations(spans: Vec<SpanRecord>) -> Vec<SpanRecord> {
-    let mut seen: HashSet<(usize, usize, &'static str, Option<String>)> = HashSet::new();
-    let mut unique: Vec<SpanRecord> = Vec::new();
+fn unify_span_annotations<'a>(spans: Vec<SpanRecord<'a>>) -> Vec<SpanRecord<'a>> {
+    let mut seen: HashSet<(usize, usize, &'static str, Option<&str>)> = HashSet::new();
+    let mut unique: Vec<SpanRecord<'a>> = Vec::new();
     for span in spans {
-        let key = (
-            span.start,
-            span.end,
-            span.rule_name,
-            span.split_value.clone(),
-        );
+        let key = (span.start, span.end, span.rule_name, span.split_value);
         if seen.insert(key) {
             unique.push(span);
         }
@@ -680,8 +716,8 @@ fn unify_span_annotations(spans: Vec<SpanRecord>) -> Vec<SpanRecord> {
     unique
 }
 
-fn apply_dot_exception(view: &TextView<'_>, state: &mut PipelineState) {
-    let mut filtered: Vec<SpanRecord> = Vec::new();
+fn apply_dot_exception<'a>(view: &'a TextView<'a>, state: &mut PipelineState<'a>) {
+    let mut filtered: Vec<SpanRecord<'a>> = Vec::new();
     for span in state.final_spans().iter() {
         if is_exception_numeric(view, span.start) || is_exception_mailaddress(view, span.start) {
             continue;
@@ -769,8 +805,8 @@ fn is_mail_char(ch: char) -> bool {
     ch.is_ascii_alphanumeric()
 }
 
-fn apply_number_exception(view: &TextView<'_>, state: &mut PipelineState) {
-    let mut filtered: Vec<SpanRecord> = Vec::new();
+fn apply_number_exception<'a>(view: &'a TextView<'a>, state: &mut PipelineState<'a>) {
+    let mut filtered: Vec<SpanRecord<'a>> = Vec::new();
     for span in state.final_spans().iter() {
         if is_exception_no(view, span) {
             continue;
@@ -780,7 +816,7 @@ fn apply_number_exception(view: &TextView<'_>, state: &mut PipelineState) {
     state.add_layer("NumberExceptionAnnotator", filtered);
 }
 
-fn is_exception_no(view: &TextView<'_>, span: &SpanRecord) -> bool {
+fn is_exception_no(view: &TextView<'_>, span: &SpanRecord<'_>) -> bool {
     if span.start < 2 {
         return false;
     }
@@ -839,7 +875,7 @@ fn collect_linebreak_spans(view: &TextView<'_>) -> Vec<(usize, usize)> {
     spans
 }
 
-fn apply_linebreak_force(view: &TextView<'_>, state: &mut PipelineState) {
+fn apply_linebreak_force<'a>(view: &'a TextView<'a>, state: &mut PipelineState<'a>) {
     let linebreak_spans = collect_linebreak_spans(view);
     let final_spans = state.final_spans().to_vec();
     if linebreak_spans.is_empty() {
@@ -847,7 +883,8 @@ fn apply_linebreak_force(view: &TextView<'_>, state: &mut PipelineState) {
         return;
     }
 
-    let mut merged: Vec<SpanRecord> = Vec::with_capacity(final_spans.len() + linebreak_spans.len());
+    let mut merged: Vec<SpanRecord<'a>> =
+        Vec::with_capacity(final_spans.len() + linebreak_spans.len());
     let mut finals_index = 0usize;
     let mut linebreak_index = 0usize;
 
@@ -860,7 +897,7 @@ fn apply_linebreak_force(view: &TextView<'_>, state: &mut PipelineState) {
                 start: lb_start,
                 end: lb_end,
                 split_type: Some("linebreak"),
-                split_value: Some(view.slice(lb_start, lb_end).to_string()),
+                split_value: Some(view.slice(lb_start, lb_end)),
             });
             finals_index += 1;
             linebreak_index += 1;
@@ -875,7 +912,7 @@ fn apply_linebreak_force(view: &TextView<'_>, state: &mut PipelineState) {
                 start: lb_start,
                 end: lb_end,
                 split_type: Some("linebreak"),
-                split_value: Some(view.slice(lb_start, lb_end).to_string()),
+                split_value: Some(view.slice(lb_start, lb_end)),
             });
             linebreak_index += 1;
         }
@@ -892,7 +929,7 @@ fn apply_linebreak_force(view: &TextView<'_>, state: &mut PipelineState) {
             start: lb_start,
             end: lb_end,
             split_type: Some("linebreak"),
-            split_value: Some(view.slice(lb_start, lb_end).to_string()),
+            split_value: Some(view.slice(lb_start, lb_end)),
         });
         linebreak_index += 1;
     }
@@ -900,10 +937,10 @@ fn apply_linebreak_force(view: &TextView<'_>, state: &mut PipelineState) {
     state.add_layer("LinebreakForceAnnotator", merged);
 }
 
-fn filter_previous_rule_same_span(
-    current: Vec<SpanRecord>,
-    previous: &[SpanRecord],
-) -> Vec<SpanRecord> {
+fn filter_previous_rule_same_span<'a>(
+    current: Vec<SpanRecord<'a>>,
+    previous: &[SpanRecord<'a>],
+) -> Vec<SpanRecord<'a>> {
     let prev_keys: HashSet<(usize, usize)> =
         previous.iter().map(|span| (span.start, span.end)).collect();
     let mut seen: HashSet<(usize, usize)> = HashSet::new();
@@ -936,7 +973,7 @@ mod tests {
         let span = &spans[0];
         assert_eq!(span.start, 3);
         assert_eq!(span.end, 10);
-        assert_eq!(span.split_value.as_deref(), Some("(*^_^*)"));
+        assert_eq!(span.split_value, Some("(*^_^*)"));
     }
 
     #[test]
