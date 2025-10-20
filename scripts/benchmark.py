@@ -5,7 +5,7 @@ import argparse
 import statistics
 import time
 from pathlib import Path
-from typing import Iterable, List
+from typing import Iterable, List, Literal
 
 from bunkai import Bunkai
 
@@ -47,20 +47,35 @@ def load_external_texts() -> List[str]:
     return [path.read_text(encoding="utf-8") for path in sorted(data_dir.glob("*.txt"))]
 
 
-def ensure_correctness(reference: Bunkai, candidate: FastBunkai, texts: Iterable[str]) -> None:
+Mode = Literal["sentences", "boundaries"]
+
+
+def ensure_correctness(
+    reference: Bunkai, candidate: FastBunkai, texts: Iterable[str], mode: Mode
+) -> None:
     for text in texts:
-        ref = list(reference(text))
-        cand = list(candidate(text))
-        if ref != cand:
+        if mode == "sentences":
+            ref = list(reference(text))
+            cand = list(candidate(text))
+            if ref != cand:
+                raise AssertionError(f"Mismatch for {text!r}: {cand} != {ref}")
+            continue
+
+        ref = reference.find_eos(text)
+        cand = candidate.find_eos(text)
+        if list(ref) != list(cand):
             raise AssertionError(f"Mismatch for {text!r}: {cand} != {ref}")
 
 
-def measure(splitter, texts: List[str], repeats: int) -> List[float]:
+def measure(splitter, texts: List[str], repeats: int, mode: Mode) -> List[float]:
     timings: List[float] = []
     for _ in range(repeats):
         start = time.perf_counter()
         for text in texts:
-            list(splitter(text))
+            if mode == "sentences":
+                list(splitter(text))
+            else:
+                splitter.find_eos(text)
         timings.append(time.perf_counter() - start)
     return timings
 
@@ -87,6 +102,12 @@ def main() -> None:
         default=10,
         help="tests/data/texts 内の追加テキストを何度ループするか (該当ファイルがある場合のみ)。",
     )
+    parser.add_argument(
+        "--mode",
+        choices=("sentences", "boundaries"),
+        default="sentences",
+        help="fast-bunkai の測定対象。sentences: 文章列を生成、boundaries: find_eos で境界のみ取得。",
+    )
     args = parser.parse_args()
 
     bunkai_ref = Bunkai()
@@ -95,7 +116,7 @@ def main() -> None:
     external_texts = load_external_texts()
 
     sample_texts = list(JAPANESE_PASSAGES + ENGLISH_PASSAGES + external_texts)
-    ensure_correctness(bunkai_ref, fast, sample_texts)
+    ensure_correctness(bunkai_ref, fast, sample_texts, args.mode)  # type: ignore[arg-type]
 
     corpora = {
         "Japanese": JAPANESE_PASSAGES * args.jp_loops,
@@ -111,12 +132,19 @@ def main() -> None:
         return f"{label}: mean={mean * 1000:.2f} ms, stdev={stdev * 1000:.2f} ms"
 
     for name, texts in corpora.items():
-        ref_timings = measure(bunkai_ref, texts, args.repeats)
-        fast_timings = measure(fast, texts, args.repeats)
+        ref_timings = measure(bunkai_ref, texts, args.repeats, args.mode)  # type: ignore[arg-type]
+        fast_timings = measure(fast, texts, args.repeats, args.mode)
 
         print(f"\n{name} corpus ({len(texts)} docs):")
-        print(pretty("  bunkai", ref_timings))
-        print(pretty("  fast-bunkai", fast_timings))
+        label = "  bunkai"
+        if args.mode == "boundaries":
+            label += " (find_eos)"
+        print(pretty(label, ref_timings))
+
+        fast_label = "  fast-bunkai"
+        if args.mode == "boundaries":
+            fast_label += " (find_eos)"
+        print(pretty(fast_label, fast_timings))
 
         ratio = statistics.mean(ref_timings) / statistics.mean(fast_timings)
         print(f"  Speedup: {ratio:.2f}x")
