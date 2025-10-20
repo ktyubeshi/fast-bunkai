@@ -25,8 +25,7 @@ class FastBunkaiSentenceBoundaryDisambiguation:
         self._tokenizer_local = threading.local()
 
     def __call__(self, text: str) -> Iterator[str]:
-        result = self._segment(text)
-        boundaries = result["final_boundaries"]
+        boundaries = self.find_eos(text)
         start = 0
         for end in boundaries:
             yield text[start:end]
@@ -35,8 +34,8 @@ class FastBunkaiSentenceBoundaryDisambiguation:
             yield text[start:]
 
     def find_eos(self, text: str) -> List[int]:
-        result = self._segment(text)
-        return result["final_boundaries"]
+        self._warn_large_text(text)
+        return cast(List[int], _fast_bunkai.segment_boundaries(text))
 
     def eos(self, text: str) -> Annotations:
         result = self._segment(text)

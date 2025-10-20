@@ -7,7 +7,7 @@ const TARGET_EMOJI_FLAGS: u8 = emoji_data::FLAG_SMILEYS_EMOTION | emoji_data::FL
 const INDIRECT_RULE_TARGETS: &[&str] = &[
     "first",
     "BasicRule",
-    "LinebreakAnnotator",
+    "LinebreakForceAnnotator",
     "EmojiAnnotator",
     "EmotionExpressionAnnotator",
     "FaceMarkDetector",
@@ -197,12 +197,13 @@ impl PipelineState {
     }
 
     fn into_output(self) -> PipelineOutput {
-        let mut unique: HashSet<usize> = HashSet::new();
-        for span in &self.layers[self.final_index].spans {
-            unique.insert(span.end);
-        }
-        let mut final_boundaries: Vec<usize> = unique.into_iter().collect();
+        let mut final_boundaries: Vec<usize> = self.layers[self.final_index]
+            .spans
+            .iter()
+            .map(|span| span.end)
+            .collect();
         final_boundaries.sort_unstable();
+        final_boundaries.dedup();
         PipelineOutput {
             layers: self.layers,
             final_boundaries,
@@ -287,14 +288,15 @@ impl<'a> TextView<'a> {
     }
 
     fn starts_with(&self, index: usize, pattern: &str) -> bool {
-        let pattern_chars: Vec<char> = pattern.chars().collect();
-        if index + pattern_chars.len() > self.char_len() {
-            return false;
-        }
-        for (offset, ch) in pattern_chars.iter().enumerate() {
-            if self.chars[index + offset] != *ch {
+        let mut cursor = index;
+        for ch in pattern.chars() {
+            if cursor >= self.char_len() {
                 return false;
             }
+            if self.chars[cursor] != ch {
+                return false;
+            }
+            cursor += 1;
         }
         true
     }
@@ -775,14 +777,14 @@ fn apply_number_exception(view: &TextView<'_>, state: &mut PipelineState) {
 }
 
 fn is_exception_no(view: &TextView<'_>, span: &SpanRecord) -> bool {
-    let value = span.split_value.as_deref();
-    if value != Some(".") && value != Some("．") {
-        return false;
-    }
     if span.start < 2 {
         return false;
     }
     if span.end >= view.char_len() {
+        return false;
+    }
+    let dot_char = view.char_at(span.start).unwrap_or('\0');
+    if !matches!(dot_char, '.' | '．') {
         return false;
     }
     let n_char = view.char_at(span.start - 2).unwrap_or('\0');

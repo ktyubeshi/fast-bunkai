@@ -39,8 +39,15 @@ fn segment(py: Python<'_>, text: &str) -> PyResult<PyObject> {
     segmentation_to_py(py, &output)
 }
 
+#[pyfunction]
+fn segment_boundaries(py: Python<'_>, text: &str) -> PyResult<Vec<usize>> {
+    let output = py.allow_threads(|| segment_core(text));
+    Ok(output.final_boundaries.clone())
+}
+
 #[pymodule]
 fn _fast_bunkai(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(segment, m)?)?;
+    m.add_function(wrap_pyfunction!(segment_boundaries, m)?)?;
     Ok(())
 }
