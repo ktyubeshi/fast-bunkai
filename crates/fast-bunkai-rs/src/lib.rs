@@ -311,6 +311,9 @@ struct EmojiSpan {
 
 #[inline]
 fn emoji_flags(codepoint: u32) -> u8 {
+    if codepoint <= 0x7F {
+        return 0;
+    }
     match emoji_data::EMOJI_DATA.binary_search_by_key(&codepoint, |entry| entry.code) {
         Ok(index) => emoji_data::EMOJI_DATA[index].flags,
         Err(_) => 0,
@@ -837,63 +840,63 @@ fn collect_linebreak_spans(view: &TextView<'_>) -> Vec<(usize, usize)> {
 
 fn apply_linebreak_force(view: &TextView<'_>, state: &mut PipelineState) {
     let linebreak_spans = collect_linebreak_spans(view);
+    let final_spans = state.final_spans().to_vec();
     if linebreak_spans.is_empty() {
-        state.add_layer("LinebreakForceAnnotator", state.final_spans().to_vec());
+        state.add_layer("LinebreakForceAnnotator", final_spans);
         return;
     }
 
-    let mut result: Vec<SpanRecord> =
-        Vec::with_capacity(state.final_spans().len() + linebreak_spans.len());
-    let mut used = vec![false; linebreak_spans.len()];
+    let mut merged: Vec<SpanRecord> = Vec::with_capacity(final_spans.len() + linebreak_spans.len());
+    let mut finals_index = 0usize;
+    let mut linebreak_index = 0usize;
 
-    for span in state.final_spans().iter() {
-        let mut replaced = false;
-        if let Ok(mut lb_index) =
-            linebreak_spans.binary_search_by_key(&span.end, |&(start, _)| start)
-        {
-            while lb_index > 0 && linebreak_spans[lb_index - 1].0 == span.end {
-                lb_index -= 1;
-            }
-            let mut search_index = lb_index;
-            while search_index < linebreak_spans.len()
-                && linebreak_spans[search_index].0 == span.end
-            {
-                if !used[search_index] {
-                    let (lb_start, lb_end) = linebreak_spans[search_index];
-                    result.push(SpanRecord {
-                        rule_name: "LinebreakForceAnnotator",
-                        start: lb_start,
-                        end: lb_end,
-                        split_type: Some("linebreak"),
-                        split_value: Some(view.slice(lb_start, lb_end).to_string()),
-                    });
-                    used[search_index] = true;
-                    replaced = true;
-                    break;
-                }
-                search_index += 1;
-            }
-        }
-
-        if !replaced {
-            result.push(span.clone());
-        }
-    }
-
-    for (index, (start, end)) in linebreak_spans.iter().enumerate() {
-        if used[index] {
+    while finals_index < final_spans.len() && linebreak_index < linebreak_spans.len() {
+        let span = &final_spans[finals_index];
+        let (lb_start, lb_end) = linebreak_spans[linebreak_index];
+        if span.end == lb_start {
+            merged.push(SpanRecord {
+                rule_name: "LinebreakForceAnnotator",
+                start: lb_start,
+                end: lb_end,
+                split_type: Some("linebreak"),
+                split_value: Some(view.slice(lb_start, lb_end).to_string()),
+            });
+            finals_index += 1;
+            linebreak_index += 1;
             continue;
         }
-        result.push(SpanRecord {
-            rule_name: "LinebreakForceAnnotator",
-            start: *start,
-            end: *end,
-            split_type: Some("linebreak"),
-            split_value: Some(view.slice(*start, *end).to_string()),
-        });
+        if span.end < lb_start {
+            merged.push(span.clone());
+            finals_index += 1;
+        } else {
+            merged.push(SpanRecord {
+                rule_name: "LinebreakForceAnnotator",
+                start: lb_start,
+                end: lb_end,
+                split_type: Some("linebreak"),
+                split_value: Some(view.slice(lb_start, lb_end).to_string()),
+            });
+            linebreak_index += 1;
+        }
     }
 
-    state.add_layer("LinebreakForceAnnotator", result);
+    while finals_index < final_spans.len() {
+        merged.push(final_spans[finals_index].clone());
+        finals_index += 1;
+    }
+    while linebreak_index < linebreak_spans.len() {
+        let (lb_start, lb_end) = linebreak_spans[linebreak_index];
+        merged.push(SpanRecord {
+            rule_name: "LinebreakForceAnnotator",
+            start: lb_start,
+            end: lb_end,
+            split_type: Some("linebreak"),
+            split_value: Some(view.slice(lb_start, lb_end).to_string()),
+        });
+        linebreak_index += 1;
+    }
+
+    state.add_layer("LinebreakForceAnnotator", merged);
 }
 
 fn filter_previous_rule_same_span(

@@ -110,12 +110,15 @@ class FastBunkaiSentenceBoundaryDisambiguation:
         return spans
 
     def _warn_large_text(self, text: str) -> None:
-        if len(text) * 4 < self._LARGE_TEXT_THRESHOLD_BYTES:
+        char_len = len(text)
+        if char_len == 0:
             return
-        text_bytes = len(text.encode("utf-8"))
-        if text_bytes < self._LARGE_TEXT_THRESHOLD_BYTES:
+        if char_len * 2 < self._LARGE_TEXT_THRESHOLD_BYTES:
             return
-        size_mib = text_bytes / (1024 * 1024)
+        estimated_bytes = char_len if text.isascii() else char_len * 3
+        if estimated_bytes < self._LARGE_TEXT_THRESHOLD_BYTES:
+            return
+        size_mib = estimated_bytes / (1024 * 1024)
         warnings.warn(
             (
                 "fast-bunkai received approximately "

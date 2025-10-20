@@ -5,7 +5,7 @@ import itertools
 from typing import Any, Dict, Iterable, Iterator, List, Optional
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(slots=True)
 class SpanAnnotation:
     rule_name: Optional[str]
     start_index: int
@@ -21,7 +21,7 @@ class SpanAnnotation:
         return self.end_index
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(slots=True)
 class TokenResult:
     node_obj: Any
     tuple_pos: tuple[str, ...]
@@ -35,7 +35,7 @@ class TokenResult:
         return self.word_surface
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(slots=True)
 class Annotations:
     annotator_forward: Optional[str] = None
     name2spans: Dict[str, List[SpanAnnotation]] = dataclasses.field(default_factory=dict)
