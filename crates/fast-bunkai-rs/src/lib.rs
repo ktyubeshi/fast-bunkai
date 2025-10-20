@@ -171,10 +171,14 @@ impl<'a> PipelineState<'a> {
             name: "first",
             spans: vec![sentinel],
         };
-        let mut name_to_index = HashMap::new();
+        let mut name_to_index = HashMap::with_capacity(8);
         name_to_index.insert("first", 0);
         Self {
-            layers: vec![layer],
+            layers: {
+                let mut layers = Vec::with_capacity(8);
+                layers.push(layer);
+                layers
+            },
             name_to_index,
             final_index: 0,
         }
@@ -383,7 +387,7 @@ fn is_face_symbol1(ch: char) -> bool {
 }
 
 fn find_face_marks<'a>(view: &'a TextView<'a>) -> Vec<SpanRecord<'a>> {
-    let mut spans: Vec<SpanRecord<'a>> = Vec::new();
+    let mut spans: Vec<SpanRecord<'a>> = Vec::with_capacity(view.char_len() / 8);
     let len = view.char_len();
     let mut idx = 0usize;
 
@@ -442,7 +446,7 @@ fn find_face_marks<'a>(view: &'a TextView<'a>) -> Vec<SpanRecord<'a>> {
 }
 
 fn find_emotion_expressions<'a>(view: &'a TextView<'a>) -> Vec<SpanRecord<'a>> {
-    let mut spans: Vec<SpanRecord<'a>> = Vec::new();
+    let mut spans: Vec<SpanRecord<'a>> = Vec::with_capacity(view.char_len() / 8);
     let len = view.char_len();
 
     for idx in 0..len {
@@ -511,7 +515,7 @@ fn is_basic_break_char(ch: char) -> bool {
 }
 
 fn build_basic_rule_spans<'a>(view: &'a TextView<'a>) -> Vec<SpanRecord<'a>> {
-    let mut spans: Vec<SpanRecord<'a>> = Vec::new();
+    let mut spans: Vec<SpanRecord<'a>> = Vec::with_capacity(view.char_len() / 4 + 1);
     let len = view.char_len();
     let mut idx = 0usize;
 
@@ -598,7 +602,7 @@ fn build_emoji_spans<'a>(view: &'a TextView<'a>) -> Vec<SpanRecord<'a>> {
 }
 
 fn find_emoji_spans(view: &TextView<'_>) -> Vec<EmojiSpan> {
-    let mut spans: Vec<EmojiSpan> = Vec::new();
+    let mut spans: Vec<EmojiSpan> = Vec::with_capacity(view.char_len() / 6);
     let char_len = view.char_len();
     let mut in_span = false;
     let mut start = 0usize;
@@ -656,7 +660,7 @@ fn find_emoji_spans(view: &TextView<'_>) -> Vec<EmojiSpan> {
 }
 
 fn apply_indirect_quote<'a>(view: &'a TextView<'a>, state: &mut PipelineState<'a>) {
-    let mut collected: Vec<SpanRecord<'a>> = Vec::new();
+    let mut collected: Vec<SpanRecord<'a>> = Vec::with_capacity(state.final_spans().len());
     for &target in INDIRECT_RULE_TARGETS {
         if let Some(layer) = state.get_layer(target) {
             for span in layer {
@@ -701,8 +705,9 @@ fn matches_rule(view: &TextView<'_>, mut index: usize, rule: &[&str]) -> bool {
 }
 
 fn unify_span_annotations<'a>(spans: Vec<SpanRecord<'a>>) -> Vec<SpanRecord<'a>> {
-    let mut seen: HashSet<(usize, usize, &'static str, Option<&str>)> = HashSet::new();
-    let mut unique: Vec<SpanRecord<'a>> = Vec::new();
+    let mut seen: HashSet<(usize, usize, &'static str, Option<&str>)> =
+        HashSet::with_capacity(spans.len());
+    let mut unique: Vec<SpanRecord<'a>> = Vec::with_capacity(spans.len());
     for span in spans {
         let key = (span.start, span.end, span.rule_name, span.split_value);
         if seen.insert(key) {
@@ -717,7 +722,7 @@ fn unify_span_annotations<'a>(spans: Vec<SpanRecord<'a>>) -> Vec<SpanRecord<'a>>
 }
 
 fn apply_dot_exception<'a>(view: &'a TextView<'a>, state: &mut PipelineState<'a>) {
-    let mut filtered: Vec<SpanRecord<'a>> = Vec::new();
+    let mut filtered: Vec<SpanRecord<'a>> = Vec::with_capacity(state.final_spans().len());
     for span in state.final_spans().iter() {
         if is_exception_numeric(view, span.start) || is_exception_mailaddress(view, span.start) {
             continue;
@@ -806,7 +811,7 @@ fn is_mail_char(ch: char) -> bool {
 }
 
 fn apply_number_exception<'a>(view: &'a TextView<'a>, state: &mut PipelineState<'a>) {
-    let mut filtered: Vec<SpanRecord<'a>> = Vec::new();
+    let mut filtered: Vec<SpanRecord<'a>> = Vec::with_capacity(state.final_spans().len());
     for span in state.final_spans().iter() {
         if is_exception_no(view, span) {
             continue;
@@ -840,7 +845,7 @@ fn is_exception_no(view: &TextView<'_>, span: &SpanRecord<'_>) -> bool {
 }
 
 fn collect_linebreak_spans(view: &TextView<'_>) -> Vec<(usize, usize)> {
-    let mut spans: Vec<(usize, usize)> = Vec::new();
+    let mut spans: Vec<(usize, usize)> = Vec::with_capacity(view.char_len() / 4);
     let len = view.char_len();
     let mut idx = 0usize;
 
@@ -943,9 +948,9 @@ fn filter_previous_rule_same_span<'a>(
 ) -> Vec<SpanRecord<'a>> {
     let prev_keys: HashSet<(usize, usize)> =
         previous.iter().map(|span| (span.start, span.end)).collect();
-    let mut seen: HashSet<(usize, usize)> = HashSet::new();
+    let mut seen: HashSet<(usize, usize)> = HashSet::with_capacity(current.len());
 
-    let mut filtered: Vec<SpanRecord> = Vec::new();
+    let mut filtered: Vec<SpanRecord<'a>> = Vec::with_capacity(current.len() + previous.len());
     for span in current {
         let key = (span.start, span.end);
         if prev_keys.contains(&key) {
