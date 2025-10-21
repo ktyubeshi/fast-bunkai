@@ -364,10 +364,20 @@ fn emoji_flags(codepoint: u32) -> u8 {
     if codepoint <= 0x7F {
         return 0;
     }
-    emoji_data::EMOJI_FLAGS
-        .get(&codepoint)
-        .copied()
-        .unwrap_or(0)
+    let mut low = 0usize;
+    let mut high = emoji_data::EMOJI_RANGES.len();
+    while low < high {
+        let mid = (low + high) / 2;
+        let range = &emoji_data::EMOJI_RANGES[mid];
+        if codepoint < range.start {
+            high = mid;
+        } else if codepoint > range.end {
+            low = mid + 1;
+        } else {
+            return range.flags;
+        }
+    }
+    0
 }
 
 fn is_in_ranges(ch: char, ranges: &[(char, char)]) -> bool {
