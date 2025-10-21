@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import threading
 import warnings
-from typing import TYPE_CHECKING, Any, Iterator, List, Sequence, cast
+from typing import TYPE_CHECKING, Any, Iterator, List, Optional, Sequence, cast
 
 if TYPE_CHECKING:
     from ._fast_bunkai import SegmentResult
@@ -37,27 +37,60 @@ class FastBunkaiSentenceBoundaryDisambiguation:
         self._warn_large_text(text)
         return cast(List[int], _fast_bunkai.segment_boundaries(text))
 
-    def eos(self, text: str) -> Annotations:
-        result = self._segment(text)
+    def eos(
+        self,
+        text: str,
+        *,
+        include_layers: Optional[Sequence[str]] = None,
+        include_morph: Optional[bool] = None,
+    ) -> Annotations:
+        want_layers = set(include_layers) if include_layers is not None else None
+        if include_morph is None:
+            need_morph_layer = want_layers is None or "MorphAnnotatorJanome" in want_layers
+        else:
+            need_morph_layer = include_morph
+
+        need_segment = (
+            want_layers is None
+            or any(layer_name != "MorphAnnotatorJanome" for layer_name in want_layers)
+        )
+
+        if not need_segment:
+            # Ensure large text warning parity when we skip the Rust segment call.
+            self._warn_large_text(text)
+
+        result = self._segment(text) if need_segment else None
         annotations = Annotations()
 
-        for layer in result["layers"]:
-            spans = [
-                SpanAnnotation(
-                    rule_name=span["rule_name"],
-                    start_index=span["start"],
-                    end_index=span["end"],
-                    split_string_type=span["split_type"],
-                    split_string_value=span["split_value"],
-                    args=None,
-                )
-                for span in layer["spans"]
-            ]
-            annotations.add_annotation_layer(layer["name"], spans)
-            if layer["name"] == "BasicRule":
-                morph_spans = self._build_morph_layer(text)
-                combined: List[SpanAnnotation] = morph_spans + list(annotations.flatten())
-                annotations.add_annotation_layer("MorphAnnotatorJanome", combined)
+        if result is not None:
+            for layer in result["layers"]:
+                name = layer["name"]
+                if want_layers is not None and name not in want_layers:
+                    continue
+                spans = [
+                    SpanAnnotation(
+                        rule_name=span["rule_name"],
+                        start_index=span["start"],
+                        end_index=span["end"],
+                        split_string_type=span["split_type"],
+                        split_string_value=span["split_value"],
+                        args=None,
+                    )
+                    for span in layer["spans"]
+                ]
+                annotations.add_annotation_layer(name, spans)
+                if name == "BasicRule" and need_morph_layer:
+
+                    def morph_factory() -> List[SpanAnnotation]:
+                        return self._build_morph_layer(text)
+
+                    annotations.add_lazy_annotation_layer("MorphAnnotatorJanome", morph_factory)
+        elif need_morph_layer:
+
+            def morph_only_factory() -> List[SpanAnnotation]:
+                return self._build_morph_layer(text)
+
+            annotations.add_lazy_annotation_layer("MorphAnnotatorJanome", morph_only_factory)
 
         return annotations
 

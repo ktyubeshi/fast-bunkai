@@ -65,7 +65,11 @@ def _open_writer(path: Path):
 
 def _morph_output(text: str, splitter: FastBunkai) -> Iterator[str]:
     end_indices = set(splitter.find_eos(text))
-    annotations = splitter.eos(text)
+    annotations = splitter.eos(
+        text,
+        include_layers=("MorphAnnotatorJanome",),
+        include_morph=True,
+    )
     spans = [
         span
         for span in annotations.get_annotation_layer("MorphAnnotatorJanome")
