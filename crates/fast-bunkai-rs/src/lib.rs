@@ -1,5 +1,6 @@
 mod emoji_data;
 
+use memchr::{memchr3_iter, memmem};
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 
@@ -339,6 +340,14 @@ impl<'a> TextView<'a> {
         }
         true
     }
+
+    fn as_bytes(&self) -> &'a [u8] {
+        self.text.as_bytes()
+    }
+
+    fn byte_to_char_index(&self, byte_offset: usize) -> Option<usize> {
+        self.char_to_byte.binary_search(&byte_offset).ok()
+    }
 }
 
 #[derive(Clone)]
@@ -515,20 +524,46 @@ fn is_basic_break_char(ch: char) -> bool {
 }
 
 fn build_basic_rule_spans<'a>(view: &'a TextView<'a>) -> Vec<SpanRecord<'a>> {
-    let mut spans: Vec<SpanRecord<'a>> = Vec::with_capacity(view.char_len() / 4 + 1);
     let len = view.char_len();
-    let mut idx = 0usize;
+    if len == 0 {
+        return Vec::new();
+    }
 
-    while idx < len {
-        let ch = view.char_at(idx).unwrap_or('\0');
-        if !is_basic_break_char(ch) {
-            idx += 1;
-            continue;
+    let mut candidate_indices: Vec<usize> = Vec::with_capacity(len / 4 + 1);
+    let bytes = view.as_bytes();
+
+    for byte in memchr3_iter(b'.', b'!', b'?', bytes) {
+        if let Some(idx) = view.byte_to_char_index(byte) {
+            candidate_indices.push(idx);
+        }
+    }
+
+    const FULLWIDTH_BREAKS: [&str; 4] = ["。", "！", "？", "．"];
+    for pattern in FULLWIDTH_BREAKS {
+        for byte in memmem::find_iter(bytes, pattern.as_bytes()) {
+            if let Some(idx) = view.byte_to_char_index(byte) {
+                candidate_indices.push(idx);
+            }
+        }
+    }
+
+    if candidate_indices.is_empty() {
+        return Vec::new();
+    }
+
+    candidate_indices.sort_unstable();
+    candidate_indices.dedup();
+
+    let mut spans: Vec<SpanRecord<'a>> = Vec::with_capacity(candidate_indices.len());
+    let mut pos = 0usize;
+
+    while pos < candidate_indices.len() {
+        let start = candidate_indices[pos];
+        if start >= len {
+            break;
         }
 
-        let start = idx;
-        idx += 1;
-
+        let mut idx = start + 1;
         while idx < len && is_basic_break_char(view.char_at(idx).unwrap_or('\0')) {
             idx += 1;
         }
@@ -550,6 +585,11 @@ fn build_basic_rule_spans<'a>(view: &'a TextView<'a>) -> Vec<SpanRecord<'a>> {
             split_type: Some("BasicRule"),
             split_value: Some(view.slice(start, end)),
         });
+
+        pos += 1;
+        while pos < candidate_indices.len() && candidate_indices[pos] < idx {
+            pos += 1;
+        }
     }
 
     spans

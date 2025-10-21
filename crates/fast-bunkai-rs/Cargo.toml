@@ -10,3 +10,4 @@ name = "fast_bunkai_rs"
 
 [dependencies]
 phf = { version = "0.11", features = ["macros"] }
+memchr = "2.7"
