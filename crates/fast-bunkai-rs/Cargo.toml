@@ -10,3 +10,4 @@ name = "fast_bunkai_rs"
 
 [dependencies]
 memchr = "2.7"
+once_cell = "1"

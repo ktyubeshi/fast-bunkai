@@ -19,6 +19,7 @@ name = "fast-bunkai-rs"
 version = "0.1.0"
 dependencies = [
  "memchr",
+ "once_cell",
 ]
 
 [[package]]

@@ -64,7 +64,7 @@ def _open_writer(path: Path):
 
 
 def _morph_output(text: str, splitter: FastBunkai) -> Iterator[str]:
-    end_indices = set(splitter.find_eos(text))
+    end_indices = sorted(set(splitter.find_eos(text)))
     annotations = splitter.eos(
         text,
         include_layers=("MorphAnnotatorJanome",),
@@ -79,6 +79,8 @@ def _morph_output(text: str, splitter: FastBunkai) -> Iterator[str]:
 
     seen = set()
     position = 0
+    eos_cursor = 0
+    eos_len = len(end_indices)
     for span in spans:
         token = span.args.get("token") if span.args else None
         if token is None:
@@ -106,9 +108,10 @@ def _morph_output(text: str, splitter: FastBunkai) -> Iterator[str]:
             )
             position += len(token.word_surface)
 
-        for idx in range(prev_position, position):
-            if idx + 1 in end_indices:
+        while eos_cursor < eos_len and end_indices[eos_cursor] <= position:
+            if end_indices[eos_cursor] > prev_position:
                 yield "EOS\n"
+            eos_cursor += 1
 
 
 def _sentence_output(text: str, splitter: FastBunkai) -> Iterator[str]:
