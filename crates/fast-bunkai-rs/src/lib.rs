@@ -3,6 +3,7 @@ mod emoji_data;
 use memchr::memmem::Finder;
 use memchr::{memchr3_iter, memchr_iter};
 use once_cell::sync::Lazy;
+use rustc_hash::FxHashSet;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 
@@ -1080,26 +1081,22 @@ fn filter_previous_rule_same_span<'a>(
     current: Vec<SpanRecord<'a>>,
     previous: &[SpanRecord<'a>],
 ) -> Vec<SpanRecord<'a>> {
-    let mut prev_keys: Vec<(usize, usize)> =
-        previous.iter().map(|span| (span.start, span.end)).collect();
-    prev_keys.sort_unstable();
-    prev_keys.dedup();
+    let mut prev_keys: FxHashSet<(usize, usize)> =
+        FxHashSet::with_capacity_and_hasher(previous.len(), Default::default());
+    for span in previous {
+        prev_keys.insert((span.start, span.end));
+    }
 
-    let mut seen_keys: Vec<(usize, usize)> = Vec::with_capacity(current.len());
+    let mut seen_keys: FxHashSet<(usize, usize)> =
+        FxHashSet::with_capacity_and_hasher(current.len(), Default::default());
     let mut filtered: Vec<SpanRecord<'a>> = Vec::with_capacity(current.len() + previous.len());
 
     for span in current {
         let key = (span.start, span.end);
-        if prev_keys.binary_search(&key).is_ok() {
+        if prev_keys.contains(&key) || !seen_keys.insert(key) {
             continue;
         }
-        match seen_keys.binary_search(&key) {
-            Ok(_) => continue,
-            Err(pos) => {
-                seen_keys.insert(pos, key);
-                filtered.push(span);
-            }
-        }
+        filtered.push(span);
     }
 
     filtered.extend_from_slice(previous);
