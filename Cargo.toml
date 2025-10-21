@@ -13,3 +13,9 @@ crate-type = ["cdylib"]
 [dependencies]
 fast-bunkai-rs = { path = "crates/fast-bunkai-rs", version = "0.1.0" }
 pyo3 = { version = "0.22", features = ["extension-module", "abi3-py310"] }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
