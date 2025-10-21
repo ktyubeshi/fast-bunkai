@@ -1,3 +1,5 @@
+#![allow(clippy::useless_conversion)]
+
 use fast_bunkai_rs::{
     segment as segment_core, segment_boundaries as segment_boundaries_core, Segmentation,
 };

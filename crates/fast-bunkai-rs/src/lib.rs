@@ -72,8 +72,8 @@ static EMOJI_FLAGS_BMP: Lazy<[u8; BMP_LIMIT]> = Lazy::new(|| {
             continue;
         }
         let end = usize::min(range.end as usize, BMP_LIMIT - 1);
-        for idx in start..=end {
-            table[idx] |= range.flags;
+        for value in &mut table[start..=end] {
+            *value |= range.flags;
         }
     }
     table
