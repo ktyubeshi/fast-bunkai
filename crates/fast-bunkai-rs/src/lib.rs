@@ -2,7 +2,7 @@ mod emoji_data;
 
 use memchr::{memchr3_iter, memmem};
 use std::cmp::Ordering;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 const TARGET_EMOJI_FLAGS: u8 = emoji_data::FLAG_SMILEYS_EMOTION | emoji_data::FLAG_SYMBOLS;
 const INDIRECT_RULE_TARGETS: &[&str] = &[
@@ -746,21 +746,32 @@ fn matches_rule(view: &TextView<'_>, mut index: usize, rule: &[&str]) -> bool {
     true
 }
 
-fn unify_span_annotations<'a>(spans: Vec<SpanRecord<'a>>) -> Vec<SpanRecord<'a>> {
-    let mut seen: HashSet<(usize, usize, &'static str, Option<&str>)> =
-        HashSet::with_capacity(spans.len());
-    let mut unique: Vec<SpanRecord<'a>> = Vec::with_capacity(spans.len());
-    for span in spans {
-        let key = (span.start, span.end, span.rule_name, span.split_value);
-        if seen.insert(key) {
-            unique.push(span);
-        }
+fn unify_span_annotations<'a>(mut spans: Vec<SpanRecord<'a>>) -> Vec<SpanRecord<'a>> {
+    if spans.is_empty() {
+        return spans;
     }
-    unique.sort_by(|a, b| match a.start.cmp(&b.start) {
+
+    spans.sort_unstable_by(|a, b| {
+        (a.start, a.end, a.rule_name, a.split_value).cmp(&(
+            b.start,
+            b.end,
+            b.rule_name,
+            b.split_value,
+        ))
+    });
+
+    spans.dedup_by(|a, b| {
+        a.start == b.start
+            && a.end == b.end
+            && a.rule_name == b.rule_name
+            && a.split_value == b.split_value
+    });
+
+    spans.sort_unstable_by(|a, b| match a.start.cmp(&b.start) {
         Ordering::Equal => a.end.cmp(&b.end),
         other => other,
     });
-    unique
+    spans
 }
 
 fn apply_dot_exception<'a>(view: &'a TextView<'a>, state: &mut PipelineState<'a>) {
@@ -988,18 +999,25 @@ fn filter_previous_rule_same_span<'a>(
     current: Vec<SpanRecord<'a>>,
     previous: &[SpanRecord<'a>],
 ) -> Vec<SpanRecord<'a>> {
-    let prev_keys: HashSet<(usize, usize)> =
+    let mut prev_keys: Vec<(usize, usize)> =
         previous.iter().map(|span| (span.start, span.end)).collect();
-    let mut seen: HashSet<(usize, usize)> = HashSet::with_capacity(current.len());
+    prev_keys.sort_unstable();
+    prev_keys.dedup();
 
+    let mut seen_keys: Vec<(usize, usize)> = Vec::with_capacity(current.len());
     let mut filtered: Vec<SpanRecord<'a>> = Vec::with_capacity(current.len() + previous.len());
+
     for span in current {
         let key = (span.start, span.end);
-        if prev_keys.contains(&key) {
+        if prev_keys.binary_search(&key).is_ok() {
             continue;
         }
-        if seen.insert(key) {
-            filtered.push(span);
+        match seen_keys.binary_search(&key) {
+            Ok(_) => continue,
+            Err(pos) => {
+                seen_keys.insert(pos, key);
+                filtered.push(span);
+            }
         }
     }
 
