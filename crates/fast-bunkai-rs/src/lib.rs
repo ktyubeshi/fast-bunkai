@@ -287,17 +287,19 @@ where
 struct TextView<'a> {
     text: &'a str,
     chars: Vec<char>,
-    char_to_byte: Vec<usize>,
+    char_to_byte: Vec<u32>,
 }
 
 impl<'a> TextView<'a> {
     fn new(text: &'a str) -> Self {
-        let mut chars = Vec::new();
-        let mut char_to_byte = Vec::new();
-        for (byte_idx, ch) in text.char_indices() {
-            chars.push(ch);
-            char_to_byte.push(byte_idx);
-        }
+        let chars: Vec<char> = text.chars().collect();
+        let char_to_byte: Vec<u32> = text
+            .char_indices()
+            .map(|(byte_idx, _)| {
+                u32::try_from(byte_idx)
+                    .expect("fast-bunkai currently supports texts smaller than 4 GiB")
+            })
+            .collect();
         Self {
             text,
             chars,
@@ -317,12 +319,12 @@ impl<'a> TextView<'a> {
         let start_byte = if start >= self.char_to_byte.len() {
             self.text.len()
         } else {
-            self.char_to_byte[start]
+            self.char_to_byte[start] as usize
         };
         let end_byte = if end >= self.char_to_byte.len() {
             self.text.len()
         } else {
-            self.char_to_byte[end]
+            self.char_to_byte[end] as usize
         };
         &self.text[start_byte..end_byte]
     }
@@ -330,13 +332,12 @@ impl<'a> TextView<'a> {
     fn starts_with(&self, index: usize, pattern: &str) -> bool {
         let mut cursor = index;
         for ch in pattern.chars() {
-            if cursor >= self.char_len() {
-                return false;
+            match self.char_at(cursor) {
+                Some(current) if current == ch => {
+                    cursor += 1;
+                }
+                _ => return false,
             }
-            if self.chars[cursor] != ch {
-                return false;
-            }
-            cursor += 1;
         }
         true
     }
@@ -346,7 +347,8 @@ impl<'a> TextView<'a> {
     }
 
     fn byte_to_char_index(&self, byte_offset: usize) -> Option<usize> {
-        self.char_to_byte.binary_search(&byte_offset).ok()
+        let byte_u32 = u32::try_from(byte_offset).ok()?;
+        self.char_to_byte.binary_search(&byte_u32).ok()
     }
 }
 
